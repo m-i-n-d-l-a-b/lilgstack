@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -d */)",
+      "Bash(grep -h {{[A-Z_]*}} browse/SKILL.md.tmpl design/SKILL.md.tmpl SKILL.md.tmpl)",
+      "Bash(grep -oh {{[A-Z_]*}} browse/SKILL.md.tmpl design/SKILL.md.tmpl SKILL.md.tmpl)",
+      "Bash(ls test/*.test.ts)",
+      "Bash(bun run:*)",
+      "Bash(bun test:*)",
+      "Bash(bun install:*)",
+      "Bash(grep -v \"^.*//.*$\")",
+      "Bash(grep -n \"^describe\\\\|^}\\)\\\\s*$\" test/skill-validation.test.ts)",
+      "Bash(xxd)",
+      "Bash(gh pr:*)",
+      "Bash(where gh:*)",
+      "Bash(winget list:*)",
+      "Bash(cmd /c \"gh pr create --title \"\"feat: replace 33 sprawling skills with 7-agent sprint stack \\(v0.18.0.0\\)\"\" --body \"\"See PR description\"\" --base main\")",
+      "Bash(powershell -Command \"gh pr create --title ''feat: replace 33 sprawling skills with 7-agent sprint stack \\(v0.18.0.0\\)'' --base main\")",
+      "Bash(cmd /c \"where gh\")",
+      "Bash(powershell -Command \"Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; if \\(-not \\(Get-Command gh -ErrorAction SilentlyContinue\\)\\) { Write-Output ''not found'' }\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Program Files\\\\GitHub CLI\\\\'' -ErrorAction SilentlyContinue; ls ''C:\\\\Users\\\\AvenPuter\\\\AppData\\\\Local\\\\Programs\\\\'' -ErrorAction SilentlyContinue | Where-Object Name -like ''*github*'' -or $_Name -like ''*gh*''\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Program Files\\\\GitHub CLI\\\\'' -ErrorAction SilentlyContinue\")",
+      "Bash(powershell -Command \"if \\($env:GITHUB_TOKEN\\) { Write-Output ''token found'' } else { Write-Output ''no token'' }; if \\($env:GH_TOKEN\\) { Write-Output ''gh token found'' } else { Write-Output ''no gh token'' }\")",
+      "Bash(powershell -Command \"echo $env:GITHUB_TOKEN; echo $env:GH_TOKEN\")",
+      "Bash(powershell -Command:*)",
+      "Bash(printf \"protocol=https\\\\nhost=github.com\\\\n\")",
+      "Bash(git credential:*)",
+      "Bash(grep -v \"^$\")"
+    ]
+  }
+}
