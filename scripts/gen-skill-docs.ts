@@ -11,14 +11,12 @@
 
 import { COMMAND_DESCRIPTIONS } from '../browse/src/commands';
 import { SNAPSHOT_FLAGS } from '../browse/src/snapshot';
-import { discoverTemplates } from './discover-skills';
+
 import * as fs from 'fs';
 import * as path from 'path';
 import type { Host, TemplateContext } from './resolvers/types';
 import { HOST_PATHS } from './resolvers/types';
 import { RESOLVERS } from './resolvers/index';
-import { externalSkillName, extractHookSafetyProse as _extractHookSafetyProse, extractNameAndDescription as _extractNameAndDescription, condenseOpenAIShortDescription as _condenseOpenAIShortDescription, generateOpenAIYaml as _generateOpenAIYaml } from './resolvers/codex-helpers';
-import { generatePlanCompletionAuditShip, generatePlanCompletionAuditReview, generatePlanVerificationExec } from './resolvers/review';
 import { ALL_HOST_CONFIGS, ALL_HOST_NAMES, resolveHostArg, getHostConfig } from '../hosts/index';
 import type { HostConfig } from './host-config';
 
@@ -493,7 +491,11 @@ function processTemplate(tmplPath: string, host: Host = 'claude'): { outputPath:
 // ─── Main ───────────────────────────────────────────────────
 
 function findTemplates(): string[] {
-  return discoverTemplates(ROOT).map(t => path.join(ROOT, t.tmpl));
+  return [
+    path.join(ROOT, 'browse', 'SKILL.md.tmpl'),
+    path.join(ROOT, 'design', 'SKILL.md.tmpl'),
+    path.join(ROOT, 'SKILL.md.tmpl'),
+  ].filter(p => fs.existsSync(p));
 }
 
 const ALL_HOSTS: Host[] = ALL_HOST_NAMES as Host[];
