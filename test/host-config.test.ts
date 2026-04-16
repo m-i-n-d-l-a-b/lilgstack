@@ -351,7 +351,6 @@ describe('host-config-export.ts CLI', () => {
     const lines = stdout.split('\n');
     expect(lines).toContain('bin');
     expect(lines).toContain('ETHOS.md');
-    expect(lines).toContain('review/checklist.md');
   });
 
   test('symlinks with missing host exits 1', () => {

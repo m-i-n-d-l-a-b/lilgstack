@@ -40,7 +40,17 @@
       "Bash(bun --version)",
       "Bash(npx playwright:*)",
       "Bash(bun -e \":*)",
-      "Bash(grep -rn \"spawnSync\\\\|execSync\" test/*.test.ts)"
+      "Bash(grep -rn \"spawnSync\\\\|execSync\" test/*.test.ts)",
+      "Bash(for dir:*)",
+      "Bash(grep -r \"plan-ceo\\\\|plan-eng\\\\|plan-design\\\\|plan-devex\\\\|design-html\\\\|design-consultation\\\\|design-shotgun\\\\|design-review\\\\|land-and-deploy\\\\|document-release\" /c/Users/AvenPuter/Documents/claude_workspace/lilgstack --include=*.md --include=*.ts --include=*.json)",
+      "Bash(grep -l \"describe\\\\|test\\\\|it\\(\" /c/Users/AvenPuter/Documents/claude_workspace/lilgstack/test/*.test.ts)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(grep -h \"plan-ceo\\\\|plan-eng\\\\|plan-design\\\\|plan-devex\" /c/Users/AvenPuter/Documents/claude_workspace/lilgstack/openclaw/skills/*/SKILL.md)",
+      "Bash(ls C:/Users/AvenPuter/Documents/claude_workspace/lilgstack/test/*.ts)",
+      "Bash(ls C:/Users/AvenPuter/Documents/claude_workspace/lilgstack/hosts/*.ts)",
+      "Bash(rm test/fixtures/golden-ship-claude.md test/fixtures/golden/claude-ship-SKILL.md test/fixtures/golden/codex-ship-SKILL.md test/fixtures/golden/factory-ship-SKILL.md test/fixtures/review-army-migration.sql test/fixtures/review-army-n-plus-one.rb test/fixtures/review-eval-design-slop.css test/fixtures/review-eval-design-slop.html test/fixtures/review-eval-enum-diff.rb test/fixtures/review-eval-enum.rb test/fixtures/review-eval-vuln.rb test/fixtures/eval-baselines.json test/fixtures/qa-eval-checkout-ground-truth.json test/fixtures/qa-eval-ground-truth.json test/fixtures/qa-eval-spa-ground-truth.json test/fixtures/coverage-audit-fixture.ts)",
+      "Bash(rmdir test/fixtures/golden)",
+      "Bash(grep -l \"playwright\\\\|chromium\\\\|browser\\\\.launch\\\\|Page\\\\b\" C:/Users/AvenPuter/Documents/claude_workspace/lilgstack/browse/test/*.test.ts)"
     ]
   }
 }
