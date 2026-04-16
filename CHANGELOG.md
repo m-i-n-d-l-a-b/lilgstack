@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.18.0.0] - 2026-04-15
+
+### Changed
+- **gstack is now a pure skills toolkit.** The headless Playwright/Chromium browser (`browse/`) and the GPT Image API CLI (`design/`) have been removed. gstack no longer ships compiled binaries, installs Playwright/Chromium, or requires OpenAI API access. Install is faster, setup is simpler, and every skill works on any platform.
+- **QA without a browser.** `/qa` and `/qa-only` now drive testing through your project's existing test suite (`bun test`, `npm test`, `pytest`, etc.) and `curl` for API endpoint verification. For UI changes, the skill asks you to paste a screenshot — Claude analyzes it directly. No Playwright session to manage.
+- **Design review without a browser.** `/design-review` now works from screenshots you paste into the conversation. Claude audits typography, spacing, color, component consistency, and interactions from the images and fixes issues in your source code. Before/after screenshots confirm each fix.
+- **Canary and land-and-deploy without a browser.** Post-deploy monitoring now uses `curl` health checks and `gh` CI status instead of browser-based verification.
+- **Simpler install.** `./setup` no longer downloads Chromium, compiles browse binary, or installs the Chrome extension. Significantly faster first-time setup.
+- **6 skills removed.** `/open-gstack-browser`, `/connect-chrome`, `/setup-browser-cookies`, `/design-shotgun`, `/pair-agent` (required browse), and the Chrome extension are gone. If you relied on these, they won't appear after upgrade.
+
+### For contributors
+- Deleted directories: `browse/`, `design/`, `extension/`, `open-gstack-browser/`, `connect-chrome/`, `setup-browser-cookies/`, `design-shotgun/`
+- Removed resolvers: `scripts/resolvers/browse.ts`, `scripts/resolvers/design.ts`
+- Updated resolvers: `scripts/resolvers/utility.ts` — `generateQAMethodology()` rewritten for curl/test-suite approach
+- Removed from package.json: `playwright`, `puppeteer-core` deps; browse/design build scripts; `dev`, `server`, `dev:design` scripts
+- Removed from CI: Playwright install step from Dockerfile
+
 ## [0.17.0.0] - 2026-04-14
 
 ### Added
