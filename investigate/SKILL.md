@@ -457,35 +457,31 @@ rm -f ~/.gstack/analytics/.pending-"$_SESSION_ID" 2>/dev/null || true
 ~/.claude/skills/gstack/bin/gstack-timeline-log '{"skill":"SKILL_NAME","event":"completed","branch":"'$(git branch --show-current 2>/dev/null || echo unknown)'","outcome":"OUTCOME","duration_s":"'"$_TEL_DUR"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null || true
 # Local analytics (gated on telemetry setting)
 if [ "$_TEL" != "off" ]; then
-echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","browse":"USED_BROWSE","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
+echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
 fi
 # Remote telemetry (opt-in, requires binary)
 if [ "$_TEL" != "off" ] && [ -x ~/.claude/skills/gstack/bin/gstack-telemetry-log ]; then
   ~/.claude/skills/gstack/bin/gstack-telemetry-log \
     --skill "SKILL_NAME" --duration "$_TEL_DUR" --outcome "OUTCOME" \
-    --used-browse "USED_BROWSE" --session-id "$_SESSION_ID" 2>/dev/null &
+    --session-id "$_SESSION_ID" 2>/dev/null &
 fi
 ```
 
 Replace `SKILL_NAME` with the actual skill name from frontmatter, `OUTCOME` with
-success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was used.
-If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
-remote binary only runs if telemetry is not off and the binary exists.
+success/error/abort. If you cannot determine the outcome, use "unknown". The local
+JSONL always logs. The remote binary only runs if telemetry is not off and the binary exists.
 
 ## Plan Mode Safe Operations
 
 When in plan mode, these operations are always allowed because they produce
 artifacts that inform the plan, not code changes:
 
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
 - `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, analytics, review logs, design artifacts, learnings)
+- Writing to `~/.gstack/` (config, analytics, review logs, learnings)
 - Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
 
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
+These are read-only in spirit — they get independent opinions or record context.
+They do NOT modify project source files.
 
 ## Skill Invocation During Plan Mode
 

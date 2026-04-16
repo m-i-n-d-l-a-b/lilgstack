@@ -3,12 +3,13 @@ name: benchmark
 preamble-tier: 1
 version: 1.0.0
 description: |
-  Performance regression detection using the browse daemon. Establishes
-  baselines for page load times, Core Web Vitals, and resource sizes.
-  Compares before/after on every PR. Tracks performance trends over time.
-  Use when: "performance", "benchmark", "page speed", "lighthouse", "web vitals",
-  "bundle size", "load time". (gstack)
-  Voice triggers (speech-to-text aliases): "speed test", "check performance".
+  Performance regression detection. Establishes baselines for page load times
+  and bundle sizes. Compares before/after on every PR. Tracks performance trends
+  over time. Use when: "performance", "benchmark", "page speed", "lighthouse",
+  "web vitals", "bundle size", "load time". (gstack)
+voice-triggers:
+  - "speed test"
+  - "check performance"
 allowed-tools:
   - Bash
   - Read
@@ -331,35 +332,31 @@ rm -f ~/.gstack/analytics/.pending-"$_SESSION_ID" 2>/dev/null || true
 ~/.claude/skills/gstack/bin/gstack-timeline-log '{"skill":"SKILL_NAME","event":"completed","branch":"'$(git branch --show-current 2>/dev/null || echo unknown)'","outcome":"OUTCOME","duration_s":"'"$_TEL_DUR"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null || true
 # Local analytics (gated on telemetry setting)
 if [ "$_TEL" != "off" ]; then
-echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","browse":"USED_BROWSE","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
+echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
 fi
 # Remote telemetry (opt-in, requires binary)
 if [ "$_TEL" != "off" ] && [ -x ~/.claude/skills/gstack/bin/gstack-telemetry-log ]; then
   ~/.claude/skills/gstack/bin/gstack-telemetry-log \
     --skill "SKILL_NAME" --duration "$_TEL_DUR" --outcome "OUTCOME" \
-    --used-browse "USED_BROWSE" --session-id "$_SESSION_ID" 2>/dev/null &
+    --session-id "$_SESSION_ID" 2>/dev/null &
 fi
 ```
 
 Replace `SKILL_NAME` with the actual skill name from frontmatter, `OUTCOME` with
-success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was used.
-If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
-remote binary only runs if telemetry is not off and the binary exists.
+success/error/abort. If you cannot determine the outcome, use "unknown". The local
+JSONL always logs. The remote binary only runs if telemetry is not off and the binary exists.
 
 ## Plan Mode Safe Operations
 
 When in plan mode, these operations are always allowed because they produce
 artifacts that inform the plan, not code changes:
 
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
 - `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, analytics, review logs, design artifacts, learnings)
+- Writing to `~/.gstack/` (config, analytics, review logs, learnings)
 - Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
 
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
+These are read-only in spirit — they get independent opinions or record context.
+They do NOT modify project source files.
 
 ## Skill Invocation During Plan Mode
 
@@ -423,42 +420,6 @@ Then write a `## GSTACK REVIEW REPORT` section to the end of the plan file:
 file you are allowed to edit in plan mode. The plan file review report is part of the
 plan's living status.
 
-## SETUP (run this check BEFORE any browse command)
-
-```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B=~/.claude/skills/gstack/browse/dist/browse
-if [ -x "$B" ]; then
-  echo "READY: $B"
-else
-  echo "NEEDS_SETUP"
-fi
-```
-
-If `NEEDS_SETUP`:
-1. Tell the user: "gstack browse needs a one-time build (~10 seconds). OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
-3. If `bun` is not installed:
-   ```bash
-   if ! command -v bun >/dev/null 2>&1; then
-     BUN_VERSION="1.3.10"
-     BUN_INSTALL_SHA="bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd"
-     tmpfile=$(mktemp)
-     curl -fsSL "https://bun.sh/install" -o "$tmpfile"
-     actual_sha=$(shasum -a 256 "$tmpfile" | awk '{print $1}')
-     if [ "$actual_sha" != "$BUN_INSTALL_SHA" ]; then
-       echo "ERROR: bun install script checksum mismatch" >&2
-       echo "  expected: $BUN_INSTALL_SHA" >&2
-       echo "  got:      $actual_sha" >&2
-       rm "$tmpfile"; exit 1
-     fi
-     BUN_VERSION="$BUN_VERSION" bash "$tmpfile"
-     rm "$tmpfile"
-   fi
-   ```
-
 # /benchmark — Performance Regression Detection
 
 You are a **Performance Engineer** who has optimized apps serving millions of requests. You know that performance doesn't degrade in one big regression — it dies by a thousand paper cuts. Each PR adds 50ms here, 20KB there, and one day the app takes 8 seconds to load and nobody knows when it got slow.
@@ -497,41 +458,40 @@ git diff $(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || gh repo 
 
 ### Phase 3: Performance Data Collection
 
-For each page, collect comprehensive performance metrics:
+For each page, collect performance metrics using curl timing:
 
 ```bash
-$B goto <page-url>
-$B perf
+curl -w "@-" -o /dev/null -s "<page-url>" <<'EOF'
+     time_namelookup: %{time_namelookup}s\n
+        time_connect: %{time_connect}s\n
+     time_appconnect: %{time_appconnect}s\n
+    time_pretransfer: %{time_pretransfer}s\n
+       time_redirect: %{time_redirect}s\n
+  time_starttransfer: %{time_starttransfer}s\n
+                    ----------\n
+          time_total: %{time_total}s\n
+EOF
 ```
 
-Then gather detailed metrics via JavaScript:
+Extract key metrics from curl timing:
+- **TTFB** (Time to First Byte): `time_starttransfer`
+- **Full Load**: `time_total`
+- **HTTP Status**: verify 200
 
+Bundle size check (static analysis):
 ```bash
-$B eval "JSON.stringify(performance.getEntriesByType('navigation')[0])"
+# JS bundle sizes
+find . -path '*/dist/*.js' -o -path '*/.next/static/chunks/*.js' 2>/dev/null | xargs ls -lh 2>/dev/null | sort -k5 -rh | head -15
+# CSS bundle sizes
+find . -path '*/dist/*.css' -o -path '*/.next/static/css/*.css' 2>/dev/null | xargs ls -lh 2>/dev/null | sort -k5 -rh | head -10
+# Total dist size
+du -sh dist/ .next/ build/ 2>/dev/null | head -5
 ```
 
-Extract key metrics:
-- **TTFB** (Time to First Byte): `responseStart - requestStart`
-- **FCP** (First Contentful Paint): from PerformanceObserver or `paint` entries
-- **LCP** (Largest Contentful Paint): from PerformanceObserver
-- **DOM Interactive**: `domInteractive - navigationStart`
-- **DOM Complete**: `domComplete - navigationStart`
-- **Full Load**: `loadEventEnd - navigationStart`
-
-Resource analysis:
+Network summary (from build output):
 ```bash
-$B eval "JSON.stringify(performance.getEntriesByType('resource').map(r => ({name: r.name.split('/').pop().split('?')[0], type: r.initiatorType, size: r.transferSize, duration: Math.round(r.duration)})).sort((a,b) => b.duration - a.duration).slice(0,15))"
-```
-
-Bundle size check:
-```bash
-$B eval "JSON.stringify(performance.getEntriesByType('resource').filter(r => r.initiatorType === 'script').map(r => ({name: r.name.split('/').pop().split('?')[0], size: r.transferSize})))"
-$B eval "JSON.stringify(performance.getEntriesByType('resource').filter(r => r.initiatorType === 'css').map(r => ({name: r.name.split('/').pop().split('?')[0], size: r.transferSize})))"
-```
-
-Network summary:
-```bash
-$B eval "(() => { const r = performance.getEntriesByType('resource'); return JSON.stringify({total_requests: r.length, total_transfer: r.reduce((s,e) => s + (e.transferSize||0), 0), by_type: Object.entries(r.reduce((a,e) => { a[e.initiatorType] = (a[e.initiatorType]||0) + 1; return a; }, {})).sort((a,b) => b[1]-a[1])})})()"
+# If Next.js: read the build output summary
+cat .next/build-manifest.json 2>/dev/null | python3 -c "import json,sys; data=json.load(sys.stdin); pages=data.get('pages',{}); [print(f'{k}: {len(v)} chunks') for k,v in list(pages.items())[:10]]" 2>/dev/null || true
 ```
 
 ### Phase 4: Baseline Capture (--baseline mode)

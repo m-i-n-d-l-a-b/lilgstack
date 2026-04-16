@@ -8,7 +8,9 @@ description: |
   fixes anything. Use when asked to "just report bugs", "qa report only", or
   "test but don't fix". For the full test-fix-verify loop, use /qa instead.
   Proactively suggest when the user wants a bug report without any code changes. (gstack)
-  Voice triggers (speech-to-text aliases): "bug report", "just check for bugs".
+voice-triggers:
+  - "bug report"
+  - "just check for bugs"
 allowed-tools:
   - Bash
   - Read
@@ -459,35 +461,31 @@ rm -f ~/.gstack/analytics/.pending-"$_SESSION_ID" 2>/dev/null || true
 ~/.claude/skills/gstack/bin/gstack-timeline-log '{"skill":"SKILL_NAME","event":"completed","branch":"'$(git branch --show-current 2>/dev/null || echo unknown)'","outcome":"OUTCOME","duration_s":"'"$_TEL_DUR"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null || true
 # Local analytics (gated on telemetry setting)
 if [ "$_TEL" != "off" ]; then
-echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","browse":"USED_BROWSE","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
+echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
 fi
 # Remote telemetry (opt-in, requires binary)
 if [ "$_TEL" != "off" ] && [ -x ~/.claude/skills/gstack/bin/gstack-telemetry-log ]; then
   ~/.claude/skills/gstack/bin/gstack-telemetry-log \
     --skill "SKILL_NAME" --duration "$_TEL_DUR" --outcome "OUTCOME" \
-    --used-browse "USED_BROWSE" --session-id "$_SESSION_ID" 2>/dev/null &
+    --session-id "$_SESSION_ID" 2>/dev/null &
 fi
 ```
 
 Replace `SKILL_NAME` with the actual skill name from frontmatter, `OUTCOME` with
-success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was used.
-If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
-remote binary only runs if telemetry is not off and the binary exists.
+success/error/abort. If you cannot determine the outcome, use "unknown". The local
+JSONL always logs. The remote binary only runs if telemetry is not off and the binary exists.
 
 ## Plan Mode Safe Operations
 
 When in plan mode, these operations are always allowed because they produce
 artifacts that inform the plan, not code changes:
 
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
 - `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, analytics, review logs, design artifacts, learnings)
+- Writing to `~/.gstack/` (config, analytics, review logs, learnings)
 - Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
 
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
+These are read-only in spirit — they get independent opinions or record context.
+They do NOT modify project source files.
 
 ## Skill Invocation During Plan Mode
 
@@ -569,44 +567,6 @@ You are a QA engineer. Test web applications like a real user — click everythi
 
 **If no URL is given and you're on a feature branch:** Automatically enter **diff-aware mode** (see Modes below). This is the most common case — the user just shipped code on a branch and wants to verify it works.
 
-**Find the browse binary:**
-
-## SETUP (run this check BEFORE any browse command)
-
-```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B=~/.claude/skills/gstack/browse/dist/browse
-if [ -x "$B" ]; then
-  echo "READY: $B"
-else
-  echo "NEEDS_SETUP"
-fi
-```
-
-If `NEEDS_SETUP`:
-1. Tell the user: "gstack browse needs a one-time build (~10 seconds). OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
-3. If `bun` is not installed:
-   ```bash
-   if ! command -v bun >/dev/null 2>&1; then
-     BUN_VERSION="1.3.10"
-     BUN_INSTALL_SHA="bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd"
-     tmpfile=$(mktemp)
-     curl -fsSL "https://bun.sh/install" -o "$tmpfile"
-     actual_sha=$(shasum -a 256 "$tmpfile" | awk '{print $1}')
-     if [ "$actual_sha" != "$BUN_INSTALL_SHA" ]; then
-       echo "ERROR: bun install script checksum mismatch" >&2
-       echo "  expected: $BUN_INSTALL_SHA" >&2
-       echo "  got:      $actual_sha" >&2
-       rm "$tmpfile"; exit 1
-     fi
-     BUN_VERSION="$BUN_VERSION" bash "$tmpfile"
-     rm "$tmpfile"
-   fi
-   ```
-
 **Create output directories:**
 
 ```bash
@@ -681,50 +641,59 @@ This is the **primary mode** for developers verifying their work. When the user 
    git log main..HEAD --oneline
    ```
 
-2. **Identify affected pages/routes** from the changed files:
+2. **Identify affected areas** from the changed files:
    - Controller/route files → which URL paths they serve
    - View/template/component files → which pages render them
    - Model/service files → which pages use those models (check controllers that reference them)
-   - CSS/style files → which pages include those stylesheets
-   - API endpoints → test them directly with `$B js "await fetch('/api/...')"`
-   - Static pages (markdown, HTML) → navigate to them directly
+   - API endpoints → test them with curl
+   - Static pages (markdown, HTML) → check their source directly
 
-   **If no obvious pages/routes are identified from the diff:** Do not skip browser testing. The user invoked /qa because they want browser-based verification. Fall back to Quick mode — navigate to the homepage, follow the top 5 navigation targets, check console for errors, and test any interactive elements found. Backend, config, and infrastructure changes affect app behavior — always verify the app still works.
-
-3. **Detect the running app** — check common local dev ports:
+3. **Run the existing test suite** for changed files:
+   Read CLAUDE.md for the test command. If not found, auto-detect:
    ```bash
-   $B goto http://localhost:3000 2>/dev/null && echo "Found app on :3000" || \
-   $B goto http://localhost:4000 2>/dev/null && echo "Found app on :4000" || \
-   $B goto http://localhost:8080 2>/dev/null && echo "Found app on :8080"
+   [ -f package.json ] && grep -E '"test"' package.json | head -3
+   [ -f Makefile ] && grep "^test" Makefile | head -3
+   [ -f pyproject.toml ] && grep "pytest" pyproject.toml | head -3
    ```
-   If no local app is found, check for a staging/preview URL in the PR or environment. If nothing works, ask the user for the URL.
+   Run the test suite targeting changed files where possible.
 
-4. **Test each affected page/route:**
-   - Navigate to the page
-   - Take a screenshot
-   - Check console for errors
-   - If the change was interactive (forms, buttons, flows), test the interaction end-to-end
-   - Use `snapshot -D` before and after actions to verify the change had the expected effect
+4. **Test API endpoints with curl** (for backend/API changes):
+   ```bash
+   # Check endpoint status
+   curl -s -o /dev/null -w "%{http_code}" http://localhost:<port>/api/<endpoint>
+   # Check response body
+   curl -s http://localhost:<port>/api/<endpoint> | head -20
+   ```
 
-5. **Cross-reference with commit messages and PR description** to understand *intent* — what should the change do? Verify it actually does that.
+5. **For UI/visual changes:** Ask the user to navigate to the affected page in their browser
+   and share a screenshot if visual verification is needed. Use AskUserQuestion:
+   "I can see the diff touches [component/page]. Can you open it in your browser and share a
+   screenshot? Use the attachment button or paste an image directly."
 
-6. **Check TODOS.md** (if it exists) for known bugs or issues related to the changed files. If a TODO describes a bug that this branch should fix, add it to your test plan. If you find a new bug during QA that isn't in TODOS.md, note it in the report.
+6. **Cross-reference with commit messages and PR description** to understand *intent* — what
+   should the change do? Verify it actually does that.
 
-7. **Report findings** scoped to the branch changes:
-   - "Changes tested: N pages/routes affected by this branch"
-   - For each: does it work? Screenshot evidence.
-   - Any regressions on adjacent pages?
+7. **Check TODOS.md** (if it exists) for known bugs or issues related to the changed files.
+   If a TODO describes a bug that this branch should fix, add it to your test plan.
 
-**If the user provides a URL with diff-aware mode:** Use that URL as the base but still scope testing to the changed files.
+8. **Report findings** scoped to the branch changes:
+   - "Changes tested: N endpoints/components affected by this branch"
+   - For each: does it work? Test output or curl response as evidence.
+   - Any regressions found by the test suite?
+
+**If the user provides a URL with diff-aware mode:** Use curl to verify the endpoint responds
+correctly, and ask the user for a screenshot for visual verification.
 
 ### Full (default when URL is provided)
-Systematic exploration. Visit every reachable page. Document 5-10 well-evidenced issues. Produce health score. Takes 5-15 minutes depending on app size.
+Systematic API and test coverage check. Verify all reachable endpoints respond correctly.
+Document issues with curl output as evidence. Produce health score.
 
 ### Quick (`--quick`)
-30-second smoke test. Visit homepage + top 5 navigation targets. Check: page loads? Console errors? Broken links? Produce health score. No detailed issue documentation.
+Run the test suite only. No network or browser interaction needed.
 
 ### Regression (`--regression <baseline>`)
-Run full mode, then load `baseline.json` from a previous run. Diff: which issues are fixed? Which are new? What's the score delta? Append regression section to report.
+Run full mode, then load `baseline.json` from a previous run. Diff: which issues are fixed?
+Which are new? What's the score delta? Append regression section to report.
 
 ---
 
@@ -732,110 +701,56 @@ Run full mode, then load `baseline.json` from a previous run. Diff: which issues
 
 ### Phase 1: Initialize
 
-1. Find browse binary (see Setup above)
-2. Create output directories
-3. Copy report template from `qa/templates/qa-report-template.md` to output dir
-4. Start timer for duration tracking
+1. Create output directories
+2. Copy report template from `qa/templates/qa-report-template.md` to output dir
+3. Start timer for duration tracking
 
-### Phase 2: Authenticate (if needed)
+### Phase 2: Test Suite
 
-**If the user specified auth credentials:**
-
+Run the project's test suite:
 ```bash
-$B goto <login-url>
-$B snapshot -i                    # find the login form
-$B fill @e3 "user@example.com"
-$B fill @e4 "[REDACTED]"         # NEVER include real passwords in report
-$B click @e5                      # submit
-$B snapshot -D                    # verify login succeeded
+# Read CLAUDE.md to find the test command, then run it
+# Common: bun test, npm test, pytest, go test ./..., cargo test
 ```
 
-**If the user provided a cookie file:**
+Note: pass/fail count, any failing tests, and relevant error output.
+
+### Phase 3: API Verification
+
+For each API endpoint affected by the diff:
 
 ```bash
-$B cookie-import cookies.json
-$B goto <target-url>
-```
-
-**If 2FA/OTP is required:** Ask the user for the code and wait.
-
-**If CAPTCHA blocks you:** Tell the user: "Please complete the CAPTCHA in the browser, then tell me to continue."
-
-### Phase 3: Orient
-
-Get a map of the application:
-
-```bash
-$B goto <target-url>
-$B snapshot -i -a -o "$REPORT_DIR/screenshots/initial.png"
-$B links                          # map navigation structure
-$B console --errors               # any errors on landing?
+# Status check
+curl -s -o /dev/null -w "HTTP %{http_code} (%{time_total}s)" <endpoint-url>
+# Response check
+curl -s <endpoint-url> | head -30
 ```
 
 **Detect framework** (note in report metadata):
-- `__next` in HTML or `_next/data` requests → Next.js
-- `csrf-token` meta tag → Rails
-- `wp-content` in URLs → WordPress
-- Client-side routing with no page reloads → SPA
+- `package.json` has `next` → Next.js
+- `config/routes.rb` exists → Rails
+- `wp-config.php` exists → WordPress
+- `manage.py` exists → Django
 
-**For SPAs:** The `links` command may return few results because navigation is client-side. Use `snapshot -i` to find nav elements (buttons, menu items) instead.
+### Phase 4: Visual Verification (UI changes)
 
-### Phase 4: Explore
+For changes to UI components, pages, or templates: ask the user to share a screenshot.
 
-Visit pages systematically. At each page:
+Use AskUserQuestion: "The diff touches [component/page/route]. Please open it in your browser
+and share a screenshot so I can verify the visual change looks correct."
 
-```bash
-$B goto <page-url>
-$B snapshot -i -a -o "$REPORT_DIR/screenshots/page-name.png"
-$B console --errors
-```
+Document what the screenshot shows and whether it matches the intended change.
 
-Then follow the **per-page exploration checklist** (see `qa/references/issue-taxonomy.md`):
-
-1. **Visual scan** — Look at the annotated screenshot for layout issues
-2. **Interactive elements** — Click buttons, links, controls. Do they work?
-3. **Forms** — Fill and submit. Test empty, invalid, edge cases
-4. **Navigation** — Check all paths in and out
-5. **States** — Empty state, loading, error, overflow
-6. **Console** — Any new JS errors after interactions?
-7. **Responsiveness** — Check mobile viewport if relevant:
-   ```bash
-   $B viewport 375x812
-   $B screenshot "$REPORT_DIR/screenshots/page-mobile.png"
-   $B viewport 1280x720
-   ```
-
-**Depth judgment:** Spend more time on core features (homepage, dashboard, checkout, search) and less on secondary pages (about, terms, privacy).
-
-**Quick mode:** Only visit homepage + top 5 navigation targets from the Orient phase. Skip the per-page checklist — just check: loads? Console errors? Broken links visible?
+**Quick mode:** Skip visual verification. Run test suite only.
 
 ### Phase 5: Document
 
 Document each issue **immediately when found** — don't batch them.
 
-**Two evidence tiers:**
-
-**Interactive bugs** (broken flows, dead buttons, form failures):
-1. Take a screenshot before the action
-2. Perform the action
-3. Take a screenshot showing the result
-4. Use `snapshot -D` to show what changed
-5. Write repro steps referencing screenshots
-
-```bash
-$B screenshot "$REPORT_DIR/screenshots/issue-001-step-1.png"
-$B click @e5
-$B screenshot "$REPORT_DIR/screenshots/issue-001-result.png"
-$B snapshot -D
-```
-
-**Static bugs** (typos, layout issues, missing images):
-1. Take a single annotated screenshot showing the problem
-2. Describe what's wrong
-
-```bash
-$B snapshot -i -a -o "$REPORT_DIR/screenshots/issue-002.png"
-```
+For each issue, include:
+- **What failed:** test name, curl output, or screenshot description
+- **Repro steps:** exact commands or user actions
+- **Expected vs actual:** what should happen vs what happened
 
 **Write each issue to the report immediately** using the template format from `qa/templates/qa-report-template.md`.
 
@@ -843,17 +758,15 @@ $B snapshot -i -a -o "$REPORT_DIR/screenshots/issue-002.png"
 
 1. **Compute health score** using the rubric below
 2. **Write "Top 3 Things to Fix"** — the 3 highest-severity issues
-3. **Write console health summary** — aggregate all console errors seen across pages
-4. **Update severity counts** in the summary table
-5. **Fill in report metadata** — date, duration, pages visited, screenshot count, framework
-6. **Save baseline** — write `baseline.json` with:
+3. **Update severity counts** in the summary table
+4. **Fill in report metadata** — date, duration, endpoints tested, tests run, framework
+5. **Save baseline** — write `baseline.json` with:
    ```json
    {
      "date": "YYYY-MM-DD",
-     "url": "<target>",
      "healthScore": N,
      "issues": [{ "id": "ISSUE-001", "title": "...", "severity": "...", "category": "..." }],
-     "categoryScores": { "console": N, "links": N, ... }
+     "categoryScores": { "functional": N, "tests": N, "ux": N }
    }
    ```
 
@@ -869,17 +782,17 @@ $B snapshot -i -a -o "$REPORT_DIR/screenshots/issue-002.png"
 
 Compute each category score (0-100), then take the weighted average.
 
-### Console (weight: 15%)
-- 0 errors → 100
-- 1-3 errors → 70
-- 4-10 errors → 40
-- 10+ errors → 10
+### Tests (weight: 30%)
+- All pass → 100
+- 1-3 failures → 60
+- 4-10 failures → 30
+- 10+ failures → 0
 
-### Links (weight: 10%)
-- 0 broken → 100
-- Each broken link → -15 (minimum 0)
+### API Endpoints (weight: 25%)
+- All 2xx → 100
+- Each 4xx/5xx → -20 (minimum 0)
 
-### Per-Category Scoring (Visual, Functional, UX, Content, Performance, Accessibility)
+### Per-Category Scoring (Visual, Functional, UX, Content)
 Each category starts at 100. Deduct per finding:
 - Critical issue → -25
 - High issue → -15
@@ -890,14 +803,11 @@ Minimum 0 per category.
 ### Weights
 | Category | Weight |
 |----------|--------|
-| Console | 15% |
-| Links | 10% |
-| Visual | 10% |
+| Tests | 30% |
+| API Endpoints | 25% |
 | Functional | 20% |
 | UX | 15% |
-| Performance | 10% |
-| Content | 5% |
-| Accessibility | 15% |
+| Content | 10% |
 
 ### Final Score
 `score = Σ (category_score × weight)`
@@ -907,45 +817,39 @@ Minimum 0 per category.
 ## Framework-Specific Guidance
 
 ### Next.js
-- Check console for hydration errors (`Hydration failed`, `Text content did not match`)
-- Monitor `_next/data` requests in network — 404s indicate broken data fetching
-- Test client-side navigation (click links, don't just `goto`) — catches routing issues
-- Check for CLS (Cumulative Layout Shift) on pages with dynamic content
+- Check for build errors: `npm run build 2>&1 | tail -20`
+- Test API routes: `curl -s http://localhost:3000/api/<route>`
+- Check for TypeScript errors: `npx tsc --noEmit 2>&1 | head -20`
 
 ### Rails
-- Check for N+1 query warnings in console (if development mode)
-- Verify CSRF token presence in forms
-- Test Turbo/Stimulus integration — do page transitions work smoothly?
-- Check for flash messages appearing and dismissing correctly
+- Run specs: `bundle exec rspec` or `bundle exec rails test`
+- Check for migration issues: `bundle exec rails db:migrate:status`
+- Test routes: `bundle exec rails routes | grep <controller>`
 
-### WordPress
-- Check for plugin conflicts (JS errors from different plugins)
-- Verify admin bar visibility for logged-in users
-- Test REST API endpoints (`/wp-json/`)
-- Check for mixed content warnings (common with WP)
+### Django
+- Run tests: `python manage.py test`
+- Check for migration issues: `python manage.py showmigrations`
+- Test endpoints: `curl -s http://localhost:8000/<path>`
 
-### General SPA (React, Vue, Angular)
-- Use `snapshot -i` for navigation — `links` command misses client-side routes
-- Check for stale state (navigate away and back — does data refresh?)
-- Test browser back/forward — does the app handle history correctly?
-- Check for memory leaks (monitor console after extended use)
+### General
+- Run linter: check CLAUDE.md for lint command
+- Check for type errors if TypeScript/mypy is configured
+- Run any integration tests in the test suite
 
 ---
 
 ## Important Rules
 
-1. **Repro is everything.** Every issue needs at least one screenshot. No exceptions.
+1. **Repro is everything.** Every issue needs curl output, test output, or a user-provided screenshot.
 2. **Verify before documenting.** Retry the issue once to confirm it's reproducible, not a fluke.
 3. **Never include credentials.** Write `[REDACTED]` for passwords in repro steps.
 4. **Write incrementally.** Append each issue to the report as you find it. Don't batch.
-5. **Never read source code.** Test as a user, not a developer.
-6. **Check console after every interaction.** JS errors that don't surface visually are still bugs.
-7. **Test like a user.** Use realistic data. Walk through complete workflows end-to-end.
-8. **Depth over breadth.** 5-10 well-documented issues with evidence > 20 vague descriptions.
-9. **Never delete output files.** Screenshots and reports accumulate — that's intentional.
-10. **Use `snapshot -C` for tricky UIs.** Finds clickable divs that the accessibility tree misses.
-11. **Show screenshots to the user.** After every `$B screenshot`, `$B snapshot -a -o`, or `$B responsive` command, use the Read tool on the output file(s) so the user can see them inline. For `responsive` (3 files), Read all three. This is critical — without it, screenshots are invisible to the user.
-12. **Never refuse to use the browser.** When the user invokes /qa or /qa-only, they are requesting browser-based testing. Never suggest evals, unit tests, or other alternatives as a substitute. Even if the diff appears to have no UI changes, backend changes affect app behavior — always open the browser and test.
+5. **Evidence over assertion.** "Test X fails with error Y" is evidence. "The login is broken" is not.
+6. **Test like a user.** Use realistic data. Walk through complete workflows end-to-end.
+7. **Depth over breadth.** 5-10 well-documented issues with evidence > 20 vague descriptions.
+8. **Never delete output files.** Reports accumulate — that's intentional.
+9. **Visual verification via user.** For UI changes, always ask for a screenshot rather than guessing.
+10. **Test suite is authoritative.** A passing test suite with no new failures is strong evidence of correctness.
 
 ---
 

@@ -307,7 +307,7 @@ Minimum 0 per category.
 7. **Depth over breadth.** 5-10 well-documented issues with evidence > 20 vague descriptions.
 8. **Never delete output files.** Reports accumulate — that's intentional.
 9. **Visual verification via user.** For UI changes, always ask for a screenshot rather than guessing.
-10. **Test suite is authoritative.** A passing test suite with no new failures is strong evidence of correctness.\`;
+10. **Test suite is authoritative.** A passing test suite with no new failures is strong evidence of correctness.`;
 }
 
 export function generateCoAuthorTrailer(ctx: TemplateContext): string {

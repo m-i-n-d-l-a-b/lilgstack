@@ -10,7 +10,11 @@ description: |
   exist (the boomerang: plan said 3 minutes, reality says 8). Use when asked to
   "test the DX", "DX audit", "developer experience test", or "try the
   onboarding". Proactively suggest after shipping a developer-facing feature. (gstack)
-  Voice triggers (speech-to-text aliases): "dx audit", "test the developer experience", "try the onboarding", "developer experience test".
+voice-triggers:
+  - "dx audit"
+  - "test the developer experience"
+  - "try the onboarding"
+  - "developer experience test"
 allowed-tools:
   - Read
   - Edit
@@ -463,35 +467,31 @@ rm -f ~/.gstack/analytics/.pending-"$_SESSION_ID" 2>/dev/null || true
 ~/.claude/skills/gstack/bin/gstack-timeline-log '{"skill":"SKILL_NAME","event":"completed","branch":"'$(git branch --show-current 2>/dev/null || echo unknown)'","outcome":"OUTCOME","duration_s":"'"$_TEL_DUR"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null || true
 # Local analytics (gated on telemetry setting)
 if [ "$_TEL" != "off" ]; then
-echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","browse":"USED_BROWSE","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
+echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
 fi
 # Remote telemetry (opt-in, requires binary)
 if [ "$_TEL" != "off" ] && [ -x ~/.claude/skills/gstack/bin/gstack-telemetry-log ]; then
   ~/.claude/skills/gstack/bin/gstack-telemetry-log \
     --skill "SKILL_NAME" --duration "$_TEL_DUR" --outcome "OUTCOME" \
-    --used-browse "USED_BROWSE" --session-id "$_SESSION_ID" 2>/dev/null &
+    --session-id "$_SESSION_ID" 2>/dev/null &
 fi
 ```
 
 Replace `SKILL_NAME` with the actual skill name from frontmatter, `OUTCOME` with
-success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was used.
-If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
-remote binary only runs if telemetry is not off and the binary exists.
+success/error/abort. If you cannot determine the outcome, use "unknown". The local
+JSONL always logs. The remote binary only runs if telemetry is not off and the binary exists.
 
 ## Plan Mode Safe Operations
 
 When in plan mode, these operations are always allowed because they produce
 artifacts that inform the plan, not code changes:
 
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
 - `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, analytics, review logs, design artifacts, learnings)
+- Writing to `~/.gstack/` (config, analytics, review logs, learnings)
 - Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
 
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
+These are read-only in spirit — they get independent opinions or record context.
+They do NOT modify project source files.
 
 ## Skill Invocation During Plan Mode
 
@@ -593,42 +593,6 @@ Print the detected base branch name. In every subsequent `git diff`, `git log`,
 branch name wherever the instructions say "the base branch" or `<default>`.
 
 ---
-
-## SETUP (run this check BEFORE any browse command)
-
-```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B=~/.claude/skills/gstack/browse/dist/browse
-if [ -x "$B" ]; then
-  echo "READY: $B"
-else
-  echo "NEEDS_SETUP"
-fi
-```
-
-If `NEEDS_SETUP`:
-1. Tell the user: "gstack browse needs a one-time build (~10 seconds). OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
-3. If `bun` is not installed:
-   ```bash
-   if ! command -v bun >/dev/null 2>&1; then
-     BUN_VERSION="1.3.10"
-     BUN_INSTALL_SHA="bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd"
-     tmpfile=$(mktemp)
-     curl -fsSL "https://bun.sh/install" -o "$tmpfile"
-     actual_sha=$(shasum -a 256 "$tmpfile" | awk '{print $1}')
-     if [ "$actual_sha" != "$BUN_INSTALL_SHA" ]; then
-       echo "ERROR: bun install script checksum mismatch" >&2
-       echo "  expected: $BUN_INSTALL_SHA" >&2
-       echo "  got:      $actual_sha" >&2
-       rm "$tmpfile"; exit 1
-     fi
-     BUN_VERSION="$BUN_VERSION" bash "$tmpfile"
-     rm "$tmpfile"
-   fi
-   ```
 
 # /devex-review: Live Developer Experience Audit
 

@@ -11,7 +11,10 @@ description: |
   for each design type. Use when: "finalize this design", "turn this into HTML",
   "build me a page", "implement this design", or after any planning skill.
   Proactively suggest when user has approved a design or has a plan ready. (gstack)
-  Voice triggers (speech-to-text aliases): "build the design", "code the mockup", "make it real".
+voice-triggers:
+  - "build the design"
+  - "code the mockup"
+  - "make it real"
 allowed-tools:
   - Bash
   - Read
@@ -447,35 +450,31 @@ rm -f ~/.gstack/analytics/.pending-"$_SESSION_ID" 2>/dev/null || true
 ~/.claude/skills/gstack/bin/gstack-timeline-log '{"skill":"SKILL_NAME","event":"completed","branch":"'$(git branch --show-current 2>/dev/null || echo unknown)'","outcome":"OUTCOME","duration_s":"'"$_TEL_DUR"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null || true
 # Local analytics (gated on telemetry setting)
 if [ "$_TEL" != "off" ]; then
-echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","browse":"USED_BROWSE","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
+echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
 fi
 # Remote telemetry (opt-in, requires binary)
 if [ "$_TEL" != "off" ] && [ -x ~/.claude/skills/gstack/bin/gstack-telemetry-log ]; then
   ~/.claude/skills/gstack/bin/gstack-telemetry-log \
     --skill "SKILL_NAME" --duration "$_TEL_DUR" --outcome "OUTCOME" \
-    --used-browse "USED_BROWSE" --session-id "$_SESSION_ID" 2>/dev/null &
+    --session-id "$_SESSION_ID" 2>/dev/null &
 fi
 ```
 
 Replace `SKILL_NAME` with the actual skill name from frontmatter, `OUTCOME` with
-success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was used.
-If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
-remote binary only runs if telemetry is not off and the binary exists.
+success/error/abort. If you cannot determine the outcome, use "unknown". The local
+JSONL always logs. The remote binary only runs if telemetry is not off and the binary exists.
 
 ## Plan Mode Safe Operations
 
 When in plan mode, these operations are always allowed because they produce
 artifacts that inform the plan, not code changes:
 
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
 - `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, analytics, review logs, design artifacts, learnings)
+- Writing to `~/.gstack/` (config, analytics, review logs, learnings)
 - Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
 
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
+These are read-only in spirit — they get independent opinions or record context.
+They do NOT modify project source files.
 
 ## Skill Invocation During Plan Mode
 
@@ -545,170 +544,6 @@ You generate production-quality HTML where text actually works correctly. Not CS
 approximations. Computed layout via Pretext. Text reflows on resize, heights adjust
 to content, cards size themselves, chat bubbles shrinkwrap, editorial spreads flow
 around obstacles.
-
-## DESIGN SETUP (run this check BEFORE any design mockup command)
-
-```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-D=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/design/dist/design" ] && D="$_ROOT/.claude/skills/gstack/design/dist/design"
-[ -z "$D" ] && D=~/.claude/skills/gstack/design/dist/design
-if [ -x "$D" ]; then
-  echo "DESIGN_READY: $D"
-else
-  echo "DESIGN_NOT_AVAILABLE"
-fi
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B=~/.claude/skills/gstack/browse/dist/browse
-if [ -x "$B" ]; then
-  echo "BROWSE_READY: $B"
-else
-  echo "BROWSE_NOT_AVAILABLE (will use 'open' to view comparison boards)"
-fi
-```
-
-If `DESIGN_NOT_AVAILABLE`: skip visual mockup generation and fall back to the
-existing HTML wireframe approach (`DESIGN_SKETCH`). Design mockups are a
-progressive enhancement, not a hard requirement.
-
-If `BROWSE_NOT_AVAILABLE`: use `open file://...` instead of `$B goto` to open
-comparison boards. The user just needs to see the HTML file in any browser.
-
-If `DESIGN_READY`: the design binary is available for visual mockup generation.
-Commands:
-- `$D generate --brief "..." --output /path.png` — generate a single mockup
-- `$D variants --brief "..." --count 3 --output-dir /path/` — generate N style variants
-- `$D compare --images "a.png,b.png,c.png" --output /path/board.html --serve` — comparison board + HTTP server
-- `$D serve --html /path/board.html` — serve comparison board and collect feedback via HTTP
-- `$D check --image /path.png --brief "..."` — vision quality gate
-- `$D iterate --session /path/session.json --feedback "..." --output /path.png` — iterate
-
-**CRITICAL PATH RULE:** All design artifacts (mockups, comparison boards, approved.json)
-MUST be saved to `~/.gstack/projects/$SLUG/designs/`, NEVER to `.context/`,
-`docs/designs/`, `/tmp/`, or any project-local directory. Design artifacts are USER
-data, not project files. They persist across branches, conversations, and workspaces.
-
-## UX Principles: How Users Actually Behave
-
-These principles govern how real humans interact with interfaces. They are observed
-behavior, not preferences. Apply them before, during, and after every design decision.
-
-### The Three Laws of Usability
-
-1. **Don't make me think.** Every page should be self-evident. If a user stops
-   to think "What do I click?" or "What does this mean?", the design has failed.
-   Self-evident > self-explanatory > requires explanation.
-
-2. **Clicks don't matter, thinking does.** Three mindless, unambiguous clicks
-   beat one click that requires thought. Each step should feel like an obvious
-   choice (animal, vegetable, or mineral), not a puzzle.
-
-3. **Omit, then omit again.** Get rid of half the words on each page, then get
-   rid of half of what's left. Happy talk (self-congratulatory text) must die.
-   Instructions must die. If they need reading, the design has failed.
-
-### How Users Actually Behave
-
-- **Users scan, they don't read.** Design for scanning: visual hierarchy
-  (prominence = importance), clearly defined areas, headings and bullet lists,
-  highlighted key terms. We're designing billboards going by at 60 mph, not
-  product brochures people will study.
-- **Users satisfice.** They pick the first reasonable option, not the best.
-  Make the right choice the most visible choice.
-- **Users muddle through.** They don't figure out how things work. They wing
-  it. If they accomplish their goal by accident, they won't seek the "right" way.
-  Once they find something that works, no matter how badly, they stick to it.
-- **Users don't read instructions.** They dive in. Guidance must be brief,
-  timely, and unavoidable, or it won't be seen.
-
-### Billboard Design for Interfaces
-
-- **Use conventions.** Logo top-left, nav top/left, search = magnifying glass.
-  Don't innovate on navigation to be clever. Innovate when you KNOW you have a
-  better idea, otherwise use conventions. Even across languages and cultures,
-  web conventions let people identify the logo, nav, search, and main content.
-- **Visual hierarchy is everything.** Related things are visually grouped. Nested
-  things are visually contained. More important = more prominent. If everything
-  shouts, nothing is heard. Start with the assumption everything is visual noise,
-  guilty until proven innocent.
-- **Make clickable things obviously clickable.** No relying on hover states for
-  discoverability, especially on mobile where hover doesn't exist. Shape, location,
-  and formatting (color, underlining) must signal clickability without interaction.
-- **Eliminate noise.** Three sources: too many things shouting for attention
-  (shouting), things not organized logically (disorganization), and too much stuff
-  (clutter). Fix noise by removal, not addition.
-- **Clarity trumps consistency.** If making something significantly clearer
-  requires making it slightly inconsistent, choose clarity every time.
-
-### Navigation as Wayfinding
-
-Users on the web have no sense of scale, direction, or location. Navigation
-must always answer: What site is this? What page am I on? What are the major
-sections? What are my options at this level? Where am I? How can I search?
-
-Persistent navigation on every page. Breadcrumbs for deep hierarchies.
-Current section visually indicated. The "trunk test": cover everything except
-the navigation. You should still know what site this is, what page you're on,
-and what the major sections are. If not, the navigation has failed.
-
-### The Goodwill Reservoir
-
-Users start with a reservoir of goodwill. Every friction point depletes it.
-
-**Deplete faster:** Hiding info users want (pricing, contact, shipping). Punishing
-users for not doing things your way (formatting requirements on phone numbers).
-Asking for unnecessary information. Putting sizzle in their way (splash screens,
-forced tours, interstitials). Unprofessional or sloppy appearance.
-
-**Replenish:** Know what users want to do and make it obvious. Tell them what they
-want to know upfront. Save them steps wherever possible. Make it easy to recover
-from errors. When in doubt, apologize.
-
-### Mobile: Same Rules, Higher Stakes
-
-All the above applies on mobile, just more so. Real estate is scarce, but never
-sacrifice usability for space savings. Affordances must be VISIBLE: no cursor
-means no hover-to-discover. Touch targets must be big enough (44px minimum).
-Flat design can strip away useful visual information that signals interactivity.
-Prioritize ruthlessly: things needed in a hurry go close at hand, everything
-else a few taps away with an obvious path to get there.
-
-## SETUP (run this check BEFORE any browse command)
-
-```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B=~/.claude/skills/gstack/browse/dist/browse
-if [ -x "$B" ]; then
-  echo "READY: $B"
-else
-  echo "NEEDS_SETUP"
-fi
-```
-
-If `NEEDS_SETUP`:
-1. Tell the user: "gstack browse needs a one-time build (~10 seconds). OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
-3. If `bun` is not installed:
-   ```bash
-   if ! command -v bun >/dev/null 2>&1; then
-     BUN_VERSION="1.3.10"
-     BUN_INSTALL_SHA="bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd"
-     tmpfile=$(mktemp)
-     curl -fsSL "https://bun.sh/install" -o "$tmpfile"
-     actual_sha=$(shasum -a 256 "$tmpfile" | awk '{print $1}')
-     if [ "$actual_sha" != "$BUN_INSTALL_SHA" ]; then
-       echo "ERROR: bun install script checksum mismatch" >&2
-       echo "  expected: $BUN_INSTALL_SHA" >&2
-       echo "  got:      $actual_sha" >&2
-       rm "$tmpfile"; exit 1
-     fi
-     BUN_VERSION="$BUN_VERSION" bash "$tmpfile"
-     rm "$tmpfile"
-   fi
-   ```
 
 ---
 
@@ -814,14 +649,12 @@ After routing, output a brief context summary:
 
 ## Step 1: Design Analysis
 
-1. If `$D` is available (`DESIGN_READY`), extract a structured implementation spec:
-```bash
-$D prompt --image <approved-variant.png> --output json
-```
-This returns colors, typography, layout structure, and component inventory via GPT-4o vision.
-
-2. If `$D` is not available, read the approved PNG inline using the Read tool.
+1. If an approved PNG exists, read it inline using the Read tool.
    Describe the visual layout, colors, typography, and component structure yourself.
+   Extract the color values, fonts, and spacing from the approved mockup by examining
+   it visually and documenting the design tokens manually.
+
+2. If no approved PNG is available, skip to the plan-driven or freeform path below.
 
 3. If in plan-driven or freeform mode (no approved PNG), design from context:
    - **Plan-driven:** read the CEO plan and/or design review notes. Extract the described
@@ -1134,26 +967,19 @@ kill $_SERVER_PID 2>/dev/null || true
 
 ## Step 4: Preview + Refinement Loop
 
-### Verification Screenshots
+### Verification
 
-If `$B` is available (browse binary), take verification screenshots at 3 viewports:
+Open the HTML file in the user's default browser to verify:
 
 ```bash
-$B goto "file://<path-to-finalized.html>"
-$B screenshot /tmp/gstack-verify-mobile.png --width 375
-$B screenshot /tmp/gstack-verify-tablet.png --width 768
-$B screenshot /tmp/gstack-verify-desktop.png --width 1440
+# Open the HTML file in your default browser to verify
+open <path-to-finalized.html> 2>/dev/null || xdg-open <path-to-finalized.html> 2>/dev/null || echo "Open <path-to-finalized.html> in your browser to verify"
 ```
 
-Show all three screenshots inline using the Read tool. Check for:
+Ask the user to check visually for:
 - Text overflow (text cut off or extending beyond containers)
 - Layout collapse (elements overlapping or missing)
 - Responsive breakage (content not adapting to viewport)
-
-If issues are found, note them and fix before presenting to the user.
-
-If `$B` is not available, skip verification and note:
-"Browse binary not available. Skipping automated viewport verification."
 
 ### Refinement Loop
 
