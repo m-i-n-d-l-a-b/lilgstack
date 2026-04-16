@@ -27,27 +27,23 @@ const codex: HostConfig = {
   pathRewrites: [
     { from: '~/.claude/skills/gstack', to: '$GSTACK_ROOT' },
     { from: '.claude/skills/gstack', to: '.agents/skills/gstack' },
-    { from: '.claude/skills/review', to: '.agents/skills/gstack/review' },
     { from: '.claude/skills', to: '.agents/skills' },
   ],
 
   suppressedResolvers: [
-    'DESIGN_OUTSIDE_VOICES',  // design.ts:485 — Codex can't invoke itself
-    'ADVERSARIAL_STEP',       // review.ts:408 — Codex can't invoke itself
-    'CODEX_SECOND_OPINION',   // review.ts:257 — Codex can't invoke itself
-    'CODEX_PLAN_REVIEW',      // review.ts:541 — Codex can't invoke itself
-    'REVIEW_ARMY',            // review-army.ts:180 — Codex shouldn't orchestrate
+    'DESIGN_OUTSIDE_VOICES',  // Codex can't invoke itself
+    'ADVERSARIAL_STEP',       // Codex can't invoke itself
+    'CODEX_SECOND_OPINION',   // Codex can't invoke itself
+    'CODEX_PLAN_REVIEW',      // Codex can't invoke itself
+    'REVIEW_ARMY',            // Codex shouldn't orchestrate multi-agent review
   ],
 
   runtimeRoot: {
     globalSymlinks: ['bin', 'browse/dist', 'browse/bin', 'gstack-upgrade', 'ETHOS.md'],
-    globalFiles: {
-      'review': ['checklist.md', 'TODOS-format.md'],
-    },
   },
   sidecar: {
     path: '.agents/skills/gstack',
-    symlinks: ['bin', 'browse', 'review', 'qa', 'ETHOS.md'],
+    symlinks: ['bin', 'browse', 'ETHOS.md'],
   },
 
   install: {
