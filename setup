@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gstack setup — build browser binary + register skills with Claude Code / Codex
+# gstack setup — register skills with Claude Code / Codex / Kiro / Factory
 set -e
 umask 077  # Restrict new files to owner-only (0o600 files, 0o700 dirs)
 
@@ -17,7 +17,6 @@ fi
 INSTALL_GSTACK_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_GSTACK_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 INSTALL_SKILLS_DIR="$(dirname "$INSTALL_GSTACK_DIR")"
-BROWSE_BIN="$SOURCE_GSTACK_DIR/browse/dist/browse"
 CODEX_SKILLS="$HOME/.codex/skills"
 CODEX_GSTACK="$CODEX_SKILLS/gstack"
 FACTORY_SKILLS="$HOME/.factory/skills"
@@ -169,78 +168,27 @@ migrate_direct_codex_install() {
   SOURCE_GSTACK_DIR="$migrated_dir"
   INSTALL_GSTACK_DIR="$migrated_dir"
   INSTALL_SKILLS_DIR="$(dirname "$INSTALL_GSTACK_DIR")"
-  BROWSE_BIN="$SOURCE_GSTACK_DIR/browse/dist/browse"
 }
 
 if [ "$INSTALL_CODEX" -eq 1 ]; then
   migrate_direct_codex_install "$SOURCE_GSTACK_DIR" "$CODEX_GSTACK"
 fi
 
-ensure_playwright_browser() {
-  if [ "$IS_WINDOWS" -eq 1 ]; then
-    # On Windows, Bun can't launch Chromium due to broken pipe handling
-    # (oven-sh/bun#4253). Use Node.js to verify Chromium works instead.
-    (
-      cd "$SOURCE_GSTACK_DIR"
-      node -e "const { chromium } = require('playwright'); (async () => { const b = await chromium.launch(); await b.close(); })()" 2>/dev/null
-    )
-  else
-    (
-      cd "$SOURCE_GSTACK_DIR"
-      bun --eval 'import { chromium } from "playwright"; const browser = await chromium.launch(); await browser.close();'
-    ) >/dev/null 2>&1
-  fi
-}
-
-# 1. Build browse binary if needed (smart rebuild: stale sources, package.json, lock)
-NEEDS_BUILD=0
-if [ ! -x "$BROWSE_BIN" ]; then
-  NEEDS_BUILD=1
-elif [ -n "$(find "$SOURCE_GSTACK_DIR/browse/src" -type f -newer "$BROWSE_BIN" -print -quit 2>/dev/null)" ]; then
-  NEEDS_BUILD=1
-elif [ "$SOURCE_GSTACK_DIR/package.json" -nt "$BROWSE_BIN" ]; then
-  NEEDS_BUILD=1
-elif [ -f "$SOURCE_GSTACK_DIR/bun.lock" ] && [ "$SOURCE_GSTACK_DIR/bun.lock" -nt "$BROWSE_BIN" ]; then
-  NEEDS_BUILD=1
-fi
-
-if [ "$NEEDS_BUILD" -eq 1 ]; then
-  log "Building browse binary..."
-  (
-    cd "$SOURCE_GSTACK_DIR"
-    bun install --frozen-lockfile 2>/dev/null || bun install
-    bun run build
-  )
-  # Safety net: write .version if build script didn't (e.g., git not available during build)
-  if [ ! -f "$SOURCE_GSTACK_DIR/browse/dist/.version" ]; then
-    git -C "$SOURCE_GSTACK_DIR" rev-parse HEAD > "$SOURCE_GSTACK_DIR/browse/dist/.version" 2>/dev/null || true
-  fi
-fi
-
-if [ ! -x "$BROWSE_BIN" ]; then
-  echo "gstack setup failed: browse binary missing at $BROWSE_BIN" >&2
-  exit 1
-fi
-
-# 1b. Generate .agents/ Codex skill docs — always regenerate to prevent stale descriptions.
+# 1. Generate .agents/ Codex skill docs — always regenerate to prevent stale descriptions.
 # .agents/ is no longer committed — generated at setup time from .tmpl templates.
 # bun run build already does this, but we need it when NEEDS_BUILD=0 (binary is fresh).
 # Always regenerate: generation is fast (<2s) and mtime-based staleness checks are fragile
 # (miss stale files when timestamps match after clone/checkout/upgrade).
 AGENTS_DIR="$SOURCE_GSTACK_DIR/.agents/skills"
-NEEDS_AGENTS_GEN=1
+log "Generating .agents/ skill docs..."
+(
+  cd "$SOURCE_GSTACK_DIR"
+  bun install --frozen-lockfile 2>/dev/null || bun install
+  bun run gen:skill-docs --host codex
+)
 
-if [ "$NEEDS_AGENTS_GEN" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
-  log "Generating .agents/ skill docs..."
-  (
-    cd "$SOURCE_GSTACK_DIR"
-    bun install --frozen-lockfile 2>/dev/null || bun install
-    bun run gen:skill-docs --host codex
-  )
-fi
-
-# 1c. Generate .factory/ Factory Droid skill docs
-if [ "$INSTALL_FACTORY" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
+# 1b. Generate .factory/ Factory Droid skill docs
+if [ "$INSTALL_FACTORY" -eq 1 ]; then
   log "Generating .factory/ skill docs..."
   (
     cd "$SOURCE_GSTACK_DIR"
@@ -249,43 +197,7 @@ if [ "$INSTALL_FACTORY" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
   )
 fi
 
-# 2. Ensure Playwright's Chromium is available
-if ! ensure_playwright_browser; then
-  echo "Installing Playwright Chromium..."
-  (
-    cd "$SOURCE_GSTACK_DIR"
-    bunx playwright install chromium
-  )
-
-  if [ "$IS_WINDOWS" -eq 1 ]; then
-    # On Windows, Node.js launches Chromium (not Bun — see oven-sh/bun#4253).
-    # Ensure playwright is importable by Node from the gstack directory.
-    if ! command -v node >/dev/null 2>&1; then
-      echo "gstack setup failed: Node.js is required on Windows (Bun cannot launch Chromium due to a pipe bug)" >&2
-      echo "  Install Node.js: https://nodejs.org/" >&2
-      exit 1
-    fi
-    echo "Windows detected — verifying Node.js can load Playwright..."
-    (
-      cd "$SOURCE_GSTACK_DIR"
-      # Bun's node_modules already has playwright; verify Node can require it
-      node -e "require('playwright')" 2>/dev/null || npm install --no-save playwright
-    )
-  fi
-fi
-
-if ! ensure_playwright_browser; then
-  if [ "$IS_WINDOWS" -eq 1 ]; then
-    echo "gstack setup failed: Playwright Chromium could not be launched via Node.js" >&2
-    echo "  This is a known issue with Bun on Windows (oven-sh/bun#4253)." >&2
-    echo "  Ensure Node.js is installed and 'node -e \"require('playwright')\"' works." >&2
-  else
-    echo "gstack setup failed: Playwright Chromium could not be launched" >&2
-  fi
-  exit 1
-fi
-
-# 3. Ensure ~/.gstack global state directory exists
+# 2. Ensure ~/.gstack global state directory exists
 mkdir -p "$HOME/.gstack/projects"
 
 # ─── Helper: link Claude skill subdirectories into a skills parent directory ──
@@ -438,7 +350,7 @@ link_codex_skill_dirs() {
     if [ -f "$skill_dir/SKILL.md" ]; then
       skill_name="$(basename "$skill_dir")"
       # Skip the sidecar directory — it contains runtime asset symlinks (bin/,
-      # browse/), not a skill. Linking it would overwrite the root gstack
+      # etc.), not a skill. Linking it would overwrite the root gstack
       # symlink that Step 5 already pointed at the repo root.
       [ "$skill_name" = "gstack" ] && continue
       target="$skills_dir/$skill_name"
@@ -464,7 +376,7 @@ create_agents_sidecar() {
   mkdir -p "$agents_gstack"
 
   # Sidecar directories that skills reference at runtime
-  for asset in bin browse review qa; do
+  for asset in bin review qa; do
     local src="$SOURCE_GSTACK_DIR/$asset"
     local dst="$agents_gstack/$asset"
     if [ -d "$src" ] || [ -f "$src" ]; then
@@ -503,19 +415,13 @@ create_codex_runtime_root() {
     rm -rf "$codex_gstack"
   fi
 
-  mkdir -p "$codex_gstack" "$codex_gstack/browse" "$codex_gstack/gstack-upgrade" "$codex_gstack/review"
+  mkdir -p "$codex_gstack" "$codex_gstack/gstack-upgrade" "$codex_gstack/review"
 
   if [ -f "$agents_dir/gstack/SKILL.md" ]; then
     ln -snf "$agents_dir/gstack/SKILL.md" "$codex_gstack/SKILL.md"
   fi
   if [ -d "$gstack_dir/bin" ]; then
     ln -snf "$gstack_dir/bin" "$codex_gstack/bin"
-  fi
-  if [ -d "$gstack_dir/browse/dist" ]; then
-    ln -snf "$gstack_dir/browse/dist" "$codex_gstack/browse/dist"
-  fi
-  if [ -d "$gstack_dir/browse/bin" ]; then
-    ln -snf "$gstack_dir/browse/bin" "$codex_gstack/browse/bin"
   fi
   if [ -f "$agents_dir/gstack-upgrade/SKILL.md" ]; then
     ln -snf "$agents_dir/gstack-upgrade/SKILL.md" "$codex_gstack/gstack-upgrade/SKILL.md"
@@ -543,19 +449,13 @@ create_factory_runtime_root() {
     rm -rf "$factory_gstack"
   fi
 
-  mkdir -p "$factory_gstack" "$factory_gstack/browse" "$factory_gstack/gstack-upgrade" "$factory_gstack/review"
+  mkdir -p "$factory_gstack" "$factory_gstack/gstack-upgrade" "$factory_gstack/review"
 
   if [ -f "$factory_dir/gstack/SKILL.md" ]; then
     ln -snf "$factory_dir/gstack/SKILL.md" "$factory_gstack/SKILL.md"
   fi
   if [ -d "$gstack_dir/bin" ]; then
     ln -snf "$gstack_dir/bin" "$factory_gstack/bin"
-  fi
-  if [ -d "$gstack_dir/browse/dist" ]; then
-    ln -snf "$gstack_dir/browse/dist" "$factory_gstack/browse/dist"
-  fi
-  if [ -d "$gstack_dir/browse/bin" ]; then
-    ln -snf "$gstack_dir/browse/bin" "$factory_gstack/browse/bin"
   fi
   if [ -f "$factory_dir/gstack-upgrade/SKILL.md" ]; then
     ln -snf "$factory_dir/gstack-upgrade/SKILL.md" "$factory_gstack/gstack-upgrade/SKILL.md"
@@ -629,21 +529,12 @@ if [ "$INSTALL_CLAUDE" -eq 1 ]; then
     if [ -x "$GSTACK_RELINK" ]; then
       GSTACK_SKILLS_DIR="$INSTALL_SKILLS_DIR" GSTACK_INSTALL_DIR="$SOURCE_GSTACK_DIR" "$GSTACK_RELINK" >/dev/null 2>&1 || true
     fi
-    # Backwards-compat alias: /connect-chrome → /open-gstack-browser
-    _OGB_LINK="$INSTALL_SKILLS_DIR/connect-chrome"
-    if [ "$SKILL_PREFIX" -eq 1 ]; then
-      _OGB_LINK="$INSTALL_SKILLS_DIR/gstack-connect-chrome"
-    fi
-    if [ -L "$_OGB_LINK" ] || [ ! -e "$_OGB_LINK" ]; then
-      ln -snf "gstack/open-gstack-browser" "$_OGB_LINK"
-    fi
     if [ "$LOCAL_INSTALL" -eq 1 ]; then
       log "gstack ready (project-local)."
       log "  skills: $INSTALL_SKILLS_DIR"
     else
       log "gstack ready (claude)."
     fi
-    log "  browse: $BROWSE_BIN"
   else
     # Not inside a skills/ directory — symlink into ~/.claude/skills/ and retry
     CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
@@ -665,15 +556,7 @@ if [ "$INSTALL_CLAUDE" -eq 1 ]; then
     if [ -x "$GSTACK_RELINK" ]; then
       GSTACK_SKILLS_DIR="$INSTALL_SKILLS_DIR" GSTACK_INSTALL_DIR="$SOURCE_GSTACK_DIR" "$GSTACK_RELINK" >/dev/null 2>&1 || true
     fi
-    _OGB_LINK="$INSTALL_SKILLS_DIR/connect-chrome"
-    if [ "$SKILL_PREFIX" -eq 1 ]; then
-      _OGB_LINK="$INSTALL_SKILLS_DIR/gstack-connect-chrome"
-    fi
-    if [ -L "$_OGB_LINK" ] || [ ! -e "$_OGB_LINK" ]; then
-      ln -snf "gstack/open-gstack-browser" "$_OGB_LINK"
-    fi
     log "gstack ready (claude)."
-    log "  browse: $BROWSE_BIN"
   fi
 fi
 
@@ -694,7 +577,6 @@ if [ "$INSTALL_CODEX" -eq 1 ]; then
   link_codex_skill_dirs "$SOURCE_GSTACK_DIR" "$CODEX_SKILLS"
 
   log "gstack ready (codex)."
-  log "  browse: $BROWSE_BIN"
   log "  codex skills: $CODEX_SKILLS"
 fi
 
@@ -708,10 +590,8 @@ if [ "$INSTALL_KIRO" -eq 1 ]; then
   KIRO_GSTACK="$KIRO_SKILLS/gstack"
   # Remove old whole-dir symlink from previous installs
   [ -L "$KIRO_GSTACK" ] && rm -f "$KIRO_GSTACK"
-  mkdir -p "$KIRO_GSTACK" "$KIRO_GSTACK/browse" "$KIRO_GSTACK/gstack-upgrade" "$KIRO_GSTACK/review"
+  mkdir -p "$KIRO_GSTACK" "$KIRO_GSTACK/gstack-upgrade" "$KIRO_GSTACK/review"
   ln -snf "$SOURCE_GSTACK_DIR/bin" "$KIRO_GSTACK/bin"
-  ln -snf "$SOURCE_GSTACK_DIR/browse/dist" "$KIRO_GSTACK/browse/dist"
-  ln -snf "$SOURCE_GSTACK_DIR/browse/bin" "$KIRO_GSTACK/browse/bin"
   # ETHOS.md — referenced by "Search Before Building" in all skill preambles
   if [ -f "$SOURCE_GSTACK_DIR/ETHOS.md" ]; then
     ln -snf "$SOURCE_GSTACK_DIR/ETHOS.md" "$KIRO_GSTACK/ETHOS.md"

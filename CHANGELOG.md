@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.19.0.0] - 2026-04-16
+
+### Changed
+- **browse and design binaries removed.** The headless Playwright/Chromium browser (`browse/`) and the GPT Image API CLI (`design/`) are gone. gstack no longer ships compiled binaries, installs Playwright/Chromium, or requires OpenAI API access. Faster setup. Works everywhere.
+- **Simpler install.** `./setup` no longer downloads Chromium, compiles the browse binary, or installs the Chrome extension. No platform-specific binaries to manage.
+
+### For contributors
+- Deleted: `browse/`, `design/`, `extension/` directories
+- Removed: `playwright`, `puppeteer-core` from package.json; browse/design build steps; browse symlinks from all host configs
+- Simplified: `scripts/resolvers/index.ts` — removed browse/design resolver imports
+
 ## [0.18.0.0] - 2026-04-15
 
 ### Added
@@ -13,9 +24,9 @@
 - **`/archivist`.** Reads the git diff and flags stale sections in README, ARCHITECTURE, CONTRIBUTING, and CLAUDE.md. Rewrites CHANGELOG entries into user-facing language. Runs a 3-question retro and optionally appends learnings to CLAUDE.md.
 
 ### Changed
-- **33 skills → 7 focused agents.** The old skill proliferation (autoplan, plan-ceo-review, plan-eng-review, plan-design-review, plan-devex-review, design-html, design-consultation, design-shotgun, design-review, review, investigate, qa, qa-only, ship, land-and-deploy, canary, learn, document-release, retro, and more) is replaced by the 7 sprint stack agents. The browse, design, gstack-upgrade, health, setup-deploy, and open-gstack-browser skills are unchanged.
+- **33 skills → 7 focused agents.** The old skill proliferation (autoplan, plan-ceo-review, plan-eng-review, plan-design-review, plan-devex-review, design-html, design-consultation, design-shotgun, design-review, review, investigate, qa, qa-only, ship, land-and-deploy, canary, learn, document-release, retro, and more) is replaced by the 7 sprint stack agents.
 - **Paid eval infrastructure removed.** The E2E test suite (~13 test files, ~$4/run), LLM-judge evals, and eval management scripts are removed. Free tests (`bun test`, <5s) remain.
-- **Template pipeline simplified.** Only `browse/SKILL.md` is generated from a template now. All 7 sprint stack skills are hand-authored and require no build step.
+- **Template pipeline simplified.** All 7 sprint stack skills are hand-authored and require no build step.
 
 ## [0.17.0.0] - 2026-04-14
 

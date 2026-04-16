@@ -6,11 +6,18 @@
 import type { TemplateContext, ResolverFn } from './types';
 
 import { generatePreamble } from './preamble';
-import { generateCommandReference, generateSnapshotFlags, generateBrowseSetup } from './browse';
+import { generateSlugEval, generateSlugSetup, generateBaseBranchDetect, generateDeployBootstrap, generateQAMethodology, generateCoAuthorTrailer, generateChangelogWorkflow } from './utility';
+import { generateLearningsSearch, generateLearningsLog } from './learnings';
 
 export const RESOLVERS: Record<string, ResolverFn> = {
+  SLUG_EVAL: generateSlugEval,
+  SLUG_SETUP: generateSlugSetup,
   PREAMBLE: generatePreamble,
-  COMMAND_REFERENCE: generateCommandReference,
-  SNAPSHOT_FLAGS: generateSnapshotFlags,
-  BROWSE_SETUP: generateBrowseSetup,
+  BASE_BRANCH_DETECT: generateBaseBranchDetect,
+  QA_METHODOLOGY: generateQAMethodology,
+  DEPLOY_BOOTSTRAP: generateDeployBootstrap,
+  CO_AUTHOR_TRAILER: generateCoAuthorTrailer,
+  LEARNINGS_SEARCH: generateLearningsSearch,
+  LEARNINGS_LOG: generateLearningsLog,
+  CHANGELOG_WORKFLOW: generateChangelogWorkflow,
 };

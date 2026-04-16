@@ -29,7 +29,7 @@ const opencode: HostConfig = {
   ],
 
   runtimeRoot: {
-    globalSymlinks: ['bin', 'browse/dist', 'browse/bin', 'gstack-upgrade', 'ETHOS.md'],
+    globalSymlinks: ['bin', 'gstack-upgrade', 'ETHOS.md'],
   },
 
   install: {
