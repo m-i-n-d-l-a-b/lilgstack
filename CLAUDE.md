@@ -4,150 +4,81 @@
 
 ```bash
 bun install          # install dependencies
-bun test             # run free tests (browse + snapshot + skill validation)
-bun run test:evals   # run paid evals: LLM judge + E2E (diff-based, ~$4/run max)
-bun run test:evals:all  # run ALL paid evals regardless of diff
-bun run test:gate    # run gate-tier tests only (CI default, blocks merge)
-bun run test:periodic  # run periodic-tier tests only (weekly cron / manual)
-bun run test:e2e     # run E2E tests only (diff-based, ~$3.85/run max)
-bun run test:e2e:all # run ALL E2E tests regardless of diff
-bun run eval:select  # show which tests would run based on current diff
+bun test             # run all tests (browse + snapshot + skill validation, <5s)
 bun run dev <cmd>    # run CLI in dev mode, e.g. bun run dev goto https://example.com
 bun run build        # gen docs + compile binaries
-bun run gen:skill-docs  # regenerate SKILL.md files from templates
+bun run gen:skill-docs  # regenerate browse/design SKILL.md from templates
 bun run skill:check  # health dashboard for all skills
-bun run dev:skill    # watch mode: auto-regen + validate on change
-bun run eval:list    # list all eval runs from ~/.gstack-dev/evals/
-bun run eval:compare # compare two eval runs (auto-picks most recent)
-bun run eval:summary # aggregate stats across all eval runs
-bun run slop          # full slop-scan report (all files)
-bun run slop:diff     # slop findings in files changed on this branch only
+bun run slop         # full slop-scan report (all files)
 ```
-
-`test:evals` requires `ANTHROPIC_API_KEY`. Codex E2E tests (`test/codex-e2e.test.ts`)
-use Codex's own auth from `~/.codex/` config — no `OPENAI_API_KEY` env var needed.
-E2E tests stream progress in real-time (tool-by-tool via `--output-format stream-json
---verbose`). Results are persisted to `~/.gstack-dev/evals/` with auto-comparison
-against the previous run.
-
-**Diff-based test selection:** `test:evals` and `test:e2e` auto-select tests based
-on `git diff` against the base branch. Each test declares its file dependencies in
-`test/helpers/touchfiles.ts`. Changes to global touchfiles (session-runner, eval-store,
-touchfiles.ts itself) trigger all tests. Use `EVALS_ALL=1` or the `:all` script
-variants to force all tests. Run `eval:select` to preview which tests would run.
-
-**Two-tier system:** Tests are classified as `gate` or `periodic` in `E2E_TIERS`
-(in `test/helpers/touchfiles.ts`). CI runs only gate tests (`EVALS_TIER=gate`);
-periodic tests run weekly via cron or manually. Use `EVALS_TIER=gate` or
-`EVALS_TIER=periodic` to filter. When adding new E2E tests, classify them:
-1. Safety guardrail or deterministic functional test? -> `gate`
-2. Quality benchmark, Opus model test, or non-deterministic? -> `periodic`
-3. Requires external service (Codex, Gemini)? -> `periodic`
 
 ## Testing
 
 ```bash
-bun test             # run before every commit — free, <2s
-bun run test:evals   # run before shipping — paid, diff-based (~$4/run max)
+bun test             # run before every commit — free, <5s
 ```
 
-`bun test` runs skill validation, gen-skill-docs quality checks, and browse
-integration tests. `bun run test:evals` runs LLM-judge quality evals and E2E
-tests via `claude -p`. Both must pass before creating a PR.
+`bun test` runs skill validation, gen-skill-docs quality checks, and browse integration tests. Must pass before creating a PR.
 
 ## Project structure
 
 ```
 gstack/
+├── interrogator/    # /interrogator — Think (six forcing questions, framing doc)
+├── architect/       # /architect — Plan (blueprint + approval gate)
+├── maker/           # /maker — Build (production code from blueprint)
+├── auditor/         # /auditor — Review (security pass, fix-first)
+├── breaker/         # /breaker — Test (root-cause debug + browser QA)
+├── releaser/        # /releaser — Ship (tests, PATCH bump, push, PR)
+├── archivist/       # /archivist — Reflect (doc freshness, retro)
 ├── browse/          # Headless browser CLI (Playwright)
 │   ├── src/         # CLI + server + commands
 │   │   ├── commands.ts  # Command registry (single source of truth)
 │   │   └── snapshot.ts  # SNAPSHOT_FLAGS metadata array
 │   ├── test/        # Integration tests + fixtures
 │   └── dist/        # Compiled binary
-├── hosts/           # Typed host configs (one per AI agent)
-│   ├── claude.ts    # Primary host config
-│   ├── codex.ts, factory.ts, kiro.ts  # Existing hosts
-│   ├── opencode.ts, slate.ts, cursor.ts, openclaw.ts  # New hosts
-│   └── index.ts     # Registry: exports all, derives Host type
-├── scripts/         # Build + DX tooling
-│   ├── gen-skill-docs.ts  # Template → SKILL.md generator (config-driven)
-│   ├── host-config.ts     # HostConfig interface + validator
-│   ├── host-config-export.ts  # Shell bridge for setup script
-│   ├── host-adapters/     # Host-specific adapters (OpenClaw tool mapping)
-│   ├── resolvers/   # Template resolver modules (preamble, design, review, etc.)
-│   ├── skill-check.ts     # Health dashboard
-│   └── dev-skill.ts       # Watch mode
-├── test/            # Skill validation + eval tests
-│   ├── helpers/     # skill-parser.ts, session-runner.ts, llm-judge.ts, eval-store.ts
-│   ├── fixtures/    # Ground truth JSON, planted-bug fixtures, eval baselines
-│   ├── skill-validation.test.ts  # Tier 1: static validation (free, <1s)
-│   ├── gen-skill-docs.test.ts    # Tier 1: generator quality (free, <1s)
-│   ├── skill-llm-eval.test.ts   # Tier 3: LLM-as-judge (~$0.15/run)
-│   └── skill-e2e-*.test.ts       # Tier 2: E2E via claude -p (~$3.85/run, split by category)
-├── qa-only/         # /qa-only skill (report-only QA, no fixes)
-├── plan-design-review/  # /plan-design-review skill (report-only design audit)
-├── design-review/    # /design-review skill (design audit + fix loop)
-├── ship/            # Ship workflow skill
-├── review/          # PR review skill
-├── plan-ceo-review/ # /plan-ceo-review skill
-├── plan-eng-review/ # /plan-eng-review skill
-├── autoplan/        # /autoplan skill (auto-review pipeline: CEO → design → eng)
-├── benchmark/       # /benchmark skill (performance regression detection)
-├── canary/          # /canary skill (post-deploy monitoring loop)
-├── codex/           # /codex skill (multi-AI second opinion via OpenAI Codex CLI)
-├── land-and-deploy/ # /land-and-deploy skill (merge → deploy → canary verify)
-├── office-hours/    # /office-hours skill (YC Office Hours — startup diagnostic + builder brainstorm)
-├── investigate/     # /investigate skill (systematic root-cause debugging)
-├── retro/           # Retrospective skill (includes /retro global cross-project mode)
-├── bin/             # CLI utilities (gstack-repo-mode, gstack-slug, gstack-config, etc.)
-├── document-release/ # /document-release skill (post-ship doc updates)
-├── cso/             # /cso skill (OWASP Top 10 + STRIDE security audit)
-├── design-consultation/ # /design-consultation skill (design system from scratch)
-├── design-shotgun/  # /design-shotgun skill (visual design exploration)
-├── open-gstack-browser/  # /open-gstack-browser skill (launch GStack Browser)
-├── connect-chrome/  # symlink → open-gstack-browser (backwards compat)
 ├── design/          # Design binary CLI (GPT Image API)
-│   ├── src/         # CLI + commands (generate, variants, compare, serve, etc.)
-│   ├── test/        # Integration tests
+│   ├── src/         # CLI + commands
 │   └── dist/        # Compiled binary
+├── gstack-upgrade/  # /gstack-upgrade skill
+├── health/          # /health skill (code quality dashboard)
+├── setup-deploy/    # /setup-deploy skill (one-time deploy config)
+├── open-gstack-browser/ # /open-gstack-browser skill
+├── hosts/           # Typed host configs (one per AI agent)
+│   └── index.ts     # Registry: exports all, derives Host type
+├── scripts/         # Build tooling
+│   ├── gen-skill-docs.ts  # Template → SKILL.md generator (browse/design only)
+│   ├── host-config.ts     # HostConfig interface + validator
+│   ├── resolvers/   # Template resolver modules (preamble, browse only)
+│   └── skill-check.ts     # Health dashboard
+├── test/            # Skill validation tests (free, <5s)
+│   ├── helpers/     # skill-parser.ts, e2e-helpers.ts
+│   ├── skill-validation.test.ts  # Static $B command validation
+│   └── gen-skill-docs.test.ts    # Generator quality checks
 ├── extension/       # Chrome extension (side panel + activity feed + CSS inspector)
 ├── lib/             # Shared libraries (worktree.ts)
-├── docs/designs/    # Design documents
-├── setup-deploy/    # /setup-deploy skill (one-time deploy config)
-├── .github/         # CI workflows + Docker image
-│   ├── workflows/   # evals.yml (E2E on Ubicloud), skill-docs.yml, actionlint.yml
-│   └── docker/      # Dockerfile.ci (pre-baked toolchain + Playwright/Chromium)
-├── contrib/         # Contributor-only tools (never installed for users)
-│   └── add-host/    # /gstack-contrib-add-host skill
+├── bin/             # CLI utilities (gstack-config, gstack-slug, gstack-repo-mode, etc.)
+├── docs/            # Architecture + design documents
 ├── setup            # One-time setup: build binary + symlink skills
 ├── SKILL.md         # Generated from SKILL.md.tmpl (don't edit directly)
 ├── SKILL.md.tmpl    # Template: edit this, run gen:skill-docs
-├── ETHOS.md         # Builder philosophy (Boil the Lake, Search Before Building)
-└── package.json     # Build scripts for browse
+├── ETHOS.md         # Builder philosophy
+└── package.json     # Build scripts
 ```
 
 ## SKILL.md workflow
 
-SKILL.md files are **generated** from `.tmpl` templates. To update docs:
+**The 7 sprint stack agents** (`interrogator`, `architect`, `maker`, `auditor`, `breaker`, `releaser`, `archivist`) are **hand-authored** SKILL.md files. Edit them directly — no build step.
 
-1. Edit the `.tmpl` file (e.g. `SKILL.md.tmpl` or `browse/SKILL.md.tmpl`)
-2. Run `bun run gen:skill-docs` (or `bun run build` which does it automatically)
+**`browse/SKILL.md`** is generated from a `.tmpl` template:
+1. Edit `browse/SKILL.md.tmpl`
+2. Run `bun run gen:skill-docs`
 3. Commit both the `.tmpl` and generated `.md` files
 
 To add a new browse command: add it to `browse/src/commands.ts` and rebuild.
 To add a snapshot flag: add it to `SNAPSHOT_FLAGS` in `browse/src/snapshot.ts` and rebuild.
 
-**Token ceiling:** Generated SKILL.md files must stay under 100KB (~25K tokens).
-`gen-skill-docs` warns if any file exceeds this. If a skill template grows past the
-ceiling, consider extracting optional sections into separate resolvers that only
-inject when relevant, or making verbose evaluation rubrics more concise.
-
-**Merge conflicts on SKILL.md files:** NEVER resolve conflicts on generated SKILL.md
-files by accepting either side. Instead: (1) resolve conflicts on the `.tmpl` templates
-and `scripts/gen-skill-docs.ts` (the sources of truth), (2) run `bun run gen:skill-docs`
-to regenerate all SKILL.md files, (3) stage the regenerated files. Accepting one side's
-generated output silently drops the other side's template changes.
+**Merge conflicts on generated SKILL.md files:** NEVER resolve by accepting either side. Resolve conflicts on the `.tmpl` template, run `bun run gen:skill-docs`, stage the result.
 
 ## Platform-agnostic design
 
@@ -414,57 +345,6 @@ Contributors can store long-range vision docs and design documents in `~/.gstack
 These are local-only (not checked in). When reviewing TODOS.md, check `plans/` for candidates
 that may be ready to promote to TODOs or implement.
 
-## E2E eval failure blame protocol
-
-When an E2E eval fails during `/ship` or any other workflow, **never claim "not
-related to our changes" without proving it.** These systems have invisible couplings —
-a preamble text change affects agent behavior, a new helper changes timing, a
-regenerated SKILL.md shifts prompt context.
-
-**Required before attributing a failure to "pre-existing":**
-1. Run the same eval on main (or base branch) and show it fails there too
-2. If it passes on main but fails on the branch — it IS your change. Trace the blame.
-3. If you can't run on main, say "unverified — may or may not be related" and flag it
-   as a risk in the PR body
-
-"Pre-existing" without receipts is a lazy claim. Prove it or don't say it.
-
-## Long-running tasks: don't give up
-
-When running evals, E2E tests, or any long-running background task, **poll until
-completion**. Use `sleep 180 && echo "ready"` + `TaskOutput` in a loop every 3
-minutes. Never switch to blocking mode and give up when the poll times out. Never
-say "I'll be notified when it completes" and stop checking — keep the loop going
-until the task finishes or the user tells you to stop.
-
-The full E2E suite can take 30-45 minutes. That's 10-15 polling cycles. Do all of
-them. Report progress at each check (which tests passed, which are running, any
-failures so far). The user wants to see the run complete, not a promise that
-you'll check later.
-
-## E2E test fixtures: extract, don't copy
-
-**NEVER copy a full SKILL.md file into an E2E test fixture.** SKILL.md files are
-1500-2000 lines. When `claude -p` reads a file that large, context bloat causes
-timeouts, flaky turn limits, and tests that take 5-10x longer than necessary.
-
-Instead, extract only the section the test actually needs:
-
-```typescript
-// BAD — agent reads 1900 lines, burns tokens on irrelevant sections
-fs.copyFileSync(path.join(ROOT, 'ship', 'SKILL.md'), path.join(dir, 'ship-SKILL.md'));
-
-// GOOD — agent reads ~60 lines, finishes in 38s instead of timing out
-const full = fs.readFileSync(path.join(ROOT, 'ship', 'SKILL.md'), 'utf-8');
-const start = full.indexOf('## Review Readiness Dashboard');
-const end = full.indexOf('\n---\n', start);
-fs.writeFileSync(path.join(dir, 'ship-SKILL.md'), full.slice(start, end > start ? end : undefined));
-```
-
-Also when running targeted E2E tests to debug failures:
-- Run in **foreground** (`bun test ...`), not background with `&` and `tee`
-- Never `pkill` running eval processes and restart — you lose results and waste money
-- One clean run beats three killed-and-restarted runs
 
 ## Publishing native OpenClaw skills to ClawHub
 

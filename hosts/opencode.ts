@@ -30,9 +30,6 @@ const opencode: HostConfig = {
 
   runtimeRoot: {
     globalSymlinks: ['bin', 'gstack-upgrade', 'ETHOS.md'],
-    globalFiles: {
-      'review': ['checklist.md', 'TODOS-format.md'],
-    },
   },
 
   install: {

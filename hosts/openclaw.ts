@@ -46,7 +46,6 @@ const openclaw: HostConfig = {
     'the Edit tool': 'the edit tool',
   },
 
-  // Suppress Claude-specific preamble sections that don't apply to OpenClaw
   suppressedResolvers: [
     'DESIGN_OUTSIDE_VOICES',
     'ADVERSARIAL_STEP',
@@ -57,9 +56,6 @@ const openclaw: HostConfig = {
 
   runtimeRoot: {
     globalSymlinks: ['bin', 'gstack-upgrade', 'ETHOS.md'],
-    globalFiles: {
-      'review': ['checklist.md', 'TODOS-format.md'],
-    },
   },
 
   install: {

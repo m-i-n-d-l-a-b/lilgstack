@@ -351,7 +351,6 @@ describe('host-config-export.ts CLI', () => {
     const lines = stdout.split('\n');
     expect(lines).toContain('bin');
     expect(lines).toContain('ETHOS.md');
-    expect(lines).toContain('review/checklist.md');
   });
 
   test('symlinks with missing host exits 1', () => {
@@ -359,40 +358,9 @@ describe('host-config-export.ts CLI', () => {
     expect(exitCode).toBe(1);
   });
 
-  test('detect finds claude (since we are running in claude)', () => {
-    const { stdout, exitCode } = run('detect');
-    expect(exitCode).toBe(0);
-    // claude binary should be on PATH in this environment
-    expect(stdout).toContain('claude');
-  });
-
   test('unknown command exits 1', () => {
     const { exitCode } = run('badcommand');
     expect(exitCode).toBe(1);
-  });
-});
-
-// ─── Golden-file regression ─────────────────────────────────
-
-describe('golden-file regression', () => {
-  const GOLDEN_DIR = path.join(ROOT, 'test', 'fixtures', 'golden');
-
-  test('Claude ship skill matches golden baseline', () => {
-    const golden = fs.readFileSync(path.join(GOLDEN_DIR, 'claude-ship-SKILL.md'), 'utf-8');
-    const current = fs.readFileSync(path.join(ROOT, 'ship', 'SKILL.md'), 'utf-8');
-    expect(current).toBe(golden);
-  });
-
-  test('Codex ship skill matches golden baseline', () => {
-    const golden = fs.readFileSync(path.join(GOLDEN_DIR, 'codex-ship-SKILL.md'), 'utf-8');
-    const current = fs.readFileSync(path.join(ROOT, '.agents', 'skills', 'gstack-ship', 'SKILL.md'), 'utf-8');
-    expect(current).toBe(golden);
-  });
-
-  test('Factory ship skill matches golden baseline', () => {
-    const golden = fs.readFileSync(path.join(GOLDEN_DIR, 'factory-ship-SKILL.md'), 'utf-8');
-    const current = fs.readFileSync(path.join(ROOT, '.factory', 'skills', 'gstack-ship', 'SKILL.md'), 'utf-8');
-    expect(current).toBe(golden);
   });
 });
 

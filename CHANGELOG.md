@@ -1,21 +1,32 @@
 # Changelog
 
-## [0.18.0.0] - 2026-04-15
+## [0.19.0.0] - 2026-04-16
 
 ### Changed
-- **gstack is now a pure skills toolkit.** The headless Playwright/Chromium browser (`browse/`) and the GPT Image API CLI (`design/`) have been removed. gstack no longer ships compiled binaries, installs Playwright/Chromium, or requires OpenAI API access. Install is faster, setup is simpler, and every skill works on any platform.
-- **QA without a browser.** `/qa` and `/qa-only` now drive testing through your project's existing test suite (`bun test`, `npm test`, `pytest`, etc.) and `curl` for API endpoint verification. For UI changes, the skill asks you to paste a screenshot — Claude analyzes it directly. No Playwright session to manage.
-- **Design review without a browser.** `/design-review` now works from screenshots you paste into the conversation. Claude audits typography, spacing, color, component consistency, and interactions from the images and fixes issues in your source code. Before/after screenshots confirm each fix.
-- **Canary and land-and-deploy without a browser.** Post-deploy monitoring now uses `curl` health checks and `gh` CI status instead of browser-based verification.
-- **Simpler install.** `./setup` no longer downloads Chromium, compiles browse binary, or installs the Chrome extension. Significantly faster first-time setup.
-- **6 skills removed.** `/open-gstack-browser`, `/connect-chrome`, `/setup-browser-cookies`, `/design-shotgun`, `/pair-agent` (required browse), and the Chrome extension are gone. If you relied on these, they won't appear after upgrade.
+- **browse and design binaries removed.** The headless Playwright/Chromium browser (`browse/`) and the GPT Image API CLI (`design/`) are gone. gstack no longer ships compiled binaries, installs Playwright/Chromium, or requires OpenAI API access. Faster setup. Works everywhere.
+- **Simpler install.** `./setup` no longer downloads Chromium, compiles the browse binary, or installs the Chrome extension. No platform-specific binaries to manage.
 
 ### For contributors
-- Deleted directories: `browse/`, `design/`, `extension/`, `open-gstack-browser/`, `connect-chrome/`, `setup-browser-cookies/`, `design-shotgun/`
-- Removed resolvers: `scripts/resolvers/browse.ts`, `scripts/resolvers/design.ts`
-- Updated resolvers: `scripts/resolvers/utility.ts` — `generateQAMethodology()` rewritten for curl/test-suite approach
-- Removed from package.json: `playwright`, `puppeteer-core` deps; browse/design build scripts; `dev`, `server`, `dev:design` scripts
-- Removed from CI: Playwright install step from Dockerfile
+- Deleted: `browse/`, `design/`, `extension/` directories
+- Removed: `playwright`, `puppeteer-core` from package.json; browse/design build steps; browse symlinks from all host configs
+- Simplified: `scripts/resolvers/index.ts` — removed browse/design resolver imports
+
+## [0.18.0.0] - 2026-04-15
+
+### Added
+- **7-Agent Sprint Stack.** gstack now ships with a focused workflow of 7 agents: `/interrogator` (validate the problem), `/architect` (lock the blueprint), `/maker` (build production code), `/auditor` (security + quality pass), `/breaker` (root-cause debugging + browser QA), `/releaser` (non-interactive ship), and `/archivist` (update docs + retro). Run them in order for a complete sprint from idea to deployed code.
+- **`/interrogator`.** Six forcing questions that rip your premise apart before a line of code is written: Demand Reality, Status Quo, Desperate Specificity, Narrowest Wedge, Direct Observation, and Future-Fit. Writes a validated framing doc to `~/.gstack/framing-[slug]-[date].md`.
+- **`/architect`.** Surfaces every hidden assumption (data shape, auth boundary, scale, failure modes, external deps) and writes a concrete blueprint with approval gate. Nothing gets built until you explicitly approve.
+- **`/maker`.** Reads the architect's blueprint and builds production-ready code matching existing conventions. No stubs, no TODOs. Max 5 refinement rounds before escalating.
+- **`/auditor`.** Critical security pass covering SQL injection, race conditions, LLM trust boundary violations, shell injection, enum completeness, auth bypass, and N+1 queries. Auto-fixes mechanical issues; batches all judgment calls into one question.
+- **`/breaker`.** Two modes: root-cause investigation (Iron Law: no fixes without confirmed root cause, 3-strike escalation) and browser QA (real Chromium, walks critical paths, atomic fix commits).
+- **`/releaser`.** One command ships: runs your test suite, auto-bumps the PATCH version, writes the CHANGELOG entry, pushes, and opens a PR. Pings the canary URL if deploy config exists.
+- **`/archivist`.** Reads the git diff and flags stale sections in README, ARCHITECTURE, CONTRIBUTING, and CLAUDE.md. Rewrites CHANGELOG entries into user-facing language. Runs a 3-question retro and optionally appends learnings to CLAUDE.md.
+
+### Changed
+- **33 skills → 7 focused agents.** The old skill proliferation (autoplan, plan-ceo-review, plan-eng-review, plan-design-review, plan-devex-review, design-html, design-consultation, design-shotgun, design-review, review, investigate, qa, qa-only, ship, land-and-deploy, canary, learn, document-release, retro, and more) is replaced by the 7 sprint stack agents.
+- **Paid eval infrastructure removed.** The E2E test suite (~13 test files, ~$4/run), LLM-judge evals, and eval management scripts are removed. Free tests (`bun test`, <5s) remain.
+- **Template pipeline simplified.** All 7 sprint stack skills are hand-authored and require no build step.
 
 ## [0.17.0.0] - 2026-04-14
 
