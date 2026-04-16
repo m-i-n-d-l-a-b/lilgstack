@@ -32,10 +32,6 @@ export function matchGlob(file: string, pattern: string): boolean {
  * Each test lists the file patterns that, if changed, require the test to run.
  */
 export const E2E_TOUCHFILES: Record<string, string[]> = {
-  // Browse core (+ test-server dependency)
-  'browse-basic':    ['browse/src/**', 'browse/test/test-server.ts'],
-  'browse-snapshot': ['browse/src/**', 'browse/test/test-server.ts'],
-
   // SKILL.md setup + preamble (depend on ROOT SKILL.md + gen-skill-docs)
   'skillmd-setup-discovery':  ['SKILL.md', 'SKILL.md.tmpl', 'scripts/gen-skill-docs.ts'],
   'skillmd-no-local-binary':  ['SKILL.md', 'SKILL.md.tmpl', 'scripts/gen-skill-docs.ts'],
@@ -44,13 +40,9 @@ export const E2E_TOUCHFILES: Record<string, string[]> = {
   'session-awareness':        ['SKILL.md', 'SKILL.md.tmpl', 'scripts/gen-skill-docs.ts'],
   'operational-learning':     ['scripts/resolvers/preamble.ts', 'bin/gstack-learnings-log'],
 
-  // QA (+ test-server dependency)
-  'qa-quick':       ['qa/**', 'browse/src/**', 'browse/test/test-server.ts'],
-  'qa-b6-static':   ['qa/**', 'browse/src/**', 'browse/test/test-server.ts', 'test/helpers/llm-judge.ts', 'browse/test/fixtures/qa-eval.html', 'test/fixtures/qa-eval-ground-truth.json'],
-  'qa-b7-spa':      ['qa/**', 'browse/src/**', 'browse/test/test-server.ts', 'test/helpers/llm-judge.ts', 'browse/test/fixtures/qa-eval-spa.html', 'test/fixtures/qa-eval-spa-ground-truth.json'],
-  'qa-b8-checkout': ['qa/**', 'browse/src/**', 'browse/test/test-server.ts', 'test/helpers/llm-judge.ts', 'browse/test/fixtures/qa-eval-checkout.html', 'test/fixtures/qa-eval-checkout-ground-truth.json'],
+  // QA
+  'qa-quick':       ['qa/**'],
   'qa-only-no-fix': ['qa-only/**', 'qa/templates/**'],
-  'qa-fix-loop':    ['qa/**', 'browse/src/**', 'browse/test/test-server.ts'],
   'qa-bootstrap':   ['qa/**', 'ship/**'],
 
   // Review
@@ -146,12 +138,7 @@ export const E2E_TOUCHFILES: Record<string, string[]> = {
   'design-consultation-preview':    ['design-consultation/**', 'scripts/gen-skill-docs.ts'],
   'plan-design-review-plan-mode':   ['plan-design-review/**', 'scripts/gen-skill-docs.ts'],
   'plan-design-review-no-ui-scope': ['plan-design-review/**', 'scripts/gen-skill-docs.ts'],
-  'design-review-fix':              ['design-review/**', 'browse/src/**', 'scripts/gen-skill-docs.ts'],
-
-  // Design Shotgun
-  'design-shotgun-path':            ['design-shotgun/**', 'design/src/**', 'scripts/resolvers/design.ts'],
-  'design-shotgun-session':         ['design-shotgun/**', 'scripts/resolvers/design.ts'],
-  'design-shotgun-full':            ['design-shotgun/**', 'design/src/**', 'browse/src/**'],
+  'design-review-fix':              ['design-review/**', 'scripts/gen-skill-docs.ts'],
 
   // gstack-upgrade
   'gstack-upgrade-happy-path': ['gstack-upgrade/**'],
@@ -160,14 +147,9 @@ export const E2E_TOUCHFILES: Record<string, string[]> = {
   'land-and-deploy-workflow':      ['land-and-deploy/**', 'scripts/gen-skill-docs.ts'],
   'land-and-deploy-first-run':     ['land-and-deploy/**', 'scripts/gen-skill-docs.ts', 'bin/gstack-slug'],
   'land-and-deploy-review-gate':   ['land-and-deploy/**', 'bin/gstack-review-read'],
-  'canary-workflow':               ['canary/**', 'browse/src/**'],
-  'benchmark-workflow':            ['benchmark/**', 'browse/src/**'],
+  'canary-workflow':               ['canary/**'],
+  'benchmark-workflow':            ['benchmark/**'],
   'setup-deploy-workflow':         ['setup-deploy/**', 'scripts/gen-skill-docs.ts'],
-
-  // Sidebar agent
-  'sidebar-navigate':              ['browse/src/server.ts', 'browse/src/sidebar-agent.ts', 'browse/src/sidebar-utils.ts', 'extension/**'],
-  'sidebar-url-accuracy':          ['browse/src/server.ts', 'browse/src/sidebar-agent.ts', 'browse/src/sidebar-utils.ts', 'extension/background.js'],
-  'sidebar-css-interaction':       ['browse/src/server.ts', 'browse/src/sidebar-agent.ts', 'browse/src/write-commands.ts', 'browse/src/read-commands.ts', 'browse/src/cdp-inspector.ts', 'extension/**'],
 
   // Autoplan
   'autoplan-core':  ['autoplan/**', 'plan-ceo-review/**', 'plan-eng-review/**', 'plan-design-review/**'],
@@ -190,10 +172,6 @@ export const E2E_TOUCHFILES: Record<string, string[]> = {
  * Must have exactly the same keys as E2E_TOUCHFILES.
  */
 export const E2E_TIERS: Record<string, 'gate' | 'periodic'> = {
-  // Browse core — gate (if browse breaks, everything breaks)
-  'browse-basic': 'gate',
-  'browse-snapshot': 'gate',
-
   // SKILL.md setup — gate (if setup breaks, no skill works)
   'skillmd-setup-discovery': 'gate',
   'skillmd-no-local-binary': 'gate',
@@ -201,13 +179,9 @@ export const E2E_TIERS: Record<string, 'gate' | 'periodic'> = {
   'session-awareness': 'gate',
   'operational-learning': 'gate',
 
-  // QA — gate for functional, periodic for quality/benchmarks
+  // QA — gate for functional
   'qa-quick': 'gate',
-  'qa-b6-static': 'periodic',
-  'qa-b7-spa': 'periodic',
-  'qa-b8-checkout': 'periodic',
   'qa-only-no-fix': 'gate',     // CRITICAL guardrail: Edit tool forbidden
-  'qa-fix-loop': 'periodic',
   'qa-bootstrap': 'gate',
 
   // Review — gate for functional/guardrails, periodic for quality
@@ -295,9 +269,6 @@ export const E2E_TIERS: Record<string, 'gate' | 'periodic'> = {
   'plan-design-review-plan-mode': 'periodic',
   'plan-design-review-no-ui-scope': 'gate',
   'design-review-fix': 'periodic',
-  'design-shotgun-path': 'gate',
-  'design-shotgun-session': 'gate',
-  'design-shotgun-full': 'periodic',
 
   // gstack-upgrade
   'gstack-upgrade-happy-path': 'gate',
@@ -309,11 +280,6 @@ export const E2E_TIERS: Record<string, 'gate' | 'periodic'> = {
   'canary-workflow': 'gate',
   'benchmark-workflow': 'gate',
   'setup-deploy-workflow': 'gate',
-
-  // Sidebar agent
-  'sidebar-navigate': 'periodic',
-  'sidebar-url-accuracy': 'periodic',
-  'sidebar-css-interaction': 'periodic',
 
   // Autoplan — periodic (not yet implemented)
   'autoplan-core': 'periodic',
@@ -335,11 +301,8 @@ export const E2E_TIERS: Record<string, 'gate' | 'periodic'> = {
  * LLM-judge test touchfiles — keyed by test description string.
  */
 export const LLM_JUDGE_TOUCHFILES: Record<string, string[]> = {
-  'command reference table':          ['SKILL.md', 'SKILL.md.tmpl', 'browse/src/commands.ts'],
-  'snapshot flags reference':         ['SKILL.md', 'SKILL.md.tmpl', 'browse/src/snapshot.ts'],
-  'browse/SKILL.md reference':        ['browse/SKILL.md', 'browse/SKILL.md.tmpl', 'browse/src/**'],
   'setup block':                      ['SKILL.md', 'SKILL.md.tmpl'],
-  'regression vs baseline':           ['SKILL.md', 'SKILL.md.tmpl', 'browse/src/commands.ts', 'test/fixtures/eval-baselines.json'],
+  'regression vs baseline':           ['SKILL.md', 'SKILL.md.tmpl', 'test/fixtures/eval-baselines.json'],
   'qa/SKILL.md workflow':             ['qa/SKILL.md', 'qa/SKILL.md.tmpl'],
   'qa/SKILL.md health rubric':        ['qa/SKILL.md', 'qa/SKILL.md.tmpl'],
   'qa/SKILL.md anti-refusal':         ['qa/SKILL.md', 'qa/SKILL.md.tmpl', 'qa-only/SKILL.md', 'qa-only/SKILL.md.tmpl'],
