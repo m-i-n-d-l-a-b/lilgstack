@@ -11,8 +11,6 @@ export interface HostPaths {
   skillRoot: string;
   localSkillRoot: string;
   binDir: string;
-  browseDir: string;
-  designDir: string;
 }
 
 /**
@@ -28,8 +26,6 @@ function buildHostPaths(): Record<string, HostPaths> {
         skillRoot: '$GSTACK_ROOT',
         localSkillRoot: config.localSkillRoot,
         binDir: '$GSTACK_BIN',
-        browseDir: '$GSTACK_BROWSE',
-        designDir: '$GSTACK_DESIGN',
       };
     } else {
       const root = `~/${config.globalRoot}`;
@@ -37,8 +33,6 @@ function buildHostPaths(): Record<string, HostPaths> {
         skillRoot: root,
         localSkillRoot: config.localSkillRoot,
         binDir: `${root}/bin`,
-        browseDir: `${root}/browse/dist`,
-        designDir: `${root}/design/dist`,
       };
     }
   }

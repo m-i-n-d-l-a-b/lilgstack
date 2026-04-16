@@ -8,7 +8,7 @@
 #
 # Usage:
 #   gstack-telemetry-log --skill qa --duration 142 --outcome success \
-#     --used-browse true --session-id "12345-1710756600"
+#     --session-id "12345-1710756600"
 #
 # Env overrides (for testing):
 #   GSTACK_STATE_DIR  — override ~/.gstack state directory
@@ -29,7 +29,6 @@ VERSION_FILE="$GSTACK_DIR/VERSION"
 SKILL=""
 DURATION=""
 OUTCOME="unknown"
-USED_BROWSE="false"
 SESSION_ID=""
 ERROR_CLASS=""
 ERROR_MESSAGE=""
@@ -42,7 +41,6 @@ while [ $# -gt 0 ]; do
     --skill)         SKILL="$2"; shift 2 ;;
     --duration)      DURATION="$2"; shift 2 ;;
     --outcome)       OUTCOME="$2"; shift 2 ;;
-    --used-browse)   USED_BROWSE="$2"; shift 2 ;;
     --session-id)    SESSION_ID="$2"; shift 2 ;;
     --error-class)   ERROR_CLASS="$2"; shift 2 ;;
     --error-message) ERROR_MESSAGE="$2"; shift 2 ;;
@@ -185,13 +183,10 @@ DUR_FIELD="null"
 INSTALL_FIELD="null"
 [ -n "$INSTALL_ID" ] && INSTALL_FIELD="\"$INSTALL_ID\""
 
-BROWSE_BOOL="false"
-[ "$USED_BROWSE" = "true" ] && BROWSE_BOOL="true"
-
-printf '{"v":1,"ts":"%s","event_type":"%s","skill":"%s","session_id":"%s","gstack_version":"%s","os":"%s","arch":"%s","duration_s":%s,"outcome":"%s","error_class":%s,"error_message":%s,"failed_step":%s,"used_browse":%s,"sessions":%s,"installation_id":%s,"source":"%s","_repo_slug":"%s","_branch":"%s"}\n' \
+printf '{"v":1,"ts":"%s","event_type":"%s","skill":"%s","session_id":"%s","gstack_version":"%s","os":"%s","arch":"%s","duration_s":%s,"outcome":"%s","error_class":%s,"error_message":%s,"failed_step":%s,"sessions":%s,"installation_id":%s,"source":"%s","_repo_slug":"%s","_branch":"%s"}\n' \
   "$TS" "$EVENT_TYPE" "$SKILL" "$SESSION_ID" "$GSTACK_VERSION" "$OS" "$ARCH" \
   "$DUR_FIELD" "$OUTCOME" "$ERR_FIELD" "$ERR_MSG_FIELD" "$STEP_FIELD" \
-  "$BROWSE_BOOL" "${SESSIONS:-1}" \
+  "${SESSIONS:-1}" \
   "$INSTALL_FIELD" "$SOURCE" "$REPO_SLUG" "$BRANCH" >> "$JSONL_FILE" 2>/dev/null || true
 
 # ─── Trigger sync if tier is not off ─────────────────────────
