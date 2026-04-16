@@ -8,8 +8,6 @@ import type { TemplateContext, ResolverFn } from './types';
 // Domain modules
 import { generatePreamble } from './preamble';
 import { generateTestFailureTriage } from './preamble';
-import { generateCommandReference, generateSnapshotFlags, generateBrowseSetup } from './browse';
-import { generateDesignMethodology, generateDesignHardRules, generateDesignOutsideVoices, generateDesignReviewLite, generateDesignSketch, generateDesignSetup, generateDesignMockup, generateDesignShotgunLoop, generateUXPrinciples } from './design';
 import { generateTestBootstrap, generateTestCoverageAuditPlan, generateTestCoverageAuditShip, generateTestCoverageAuditReview } from './testing';
 import { generateReviewDashboard, generatePlanFileReviewReport, generateSpecReviewLoop, generateBenefitsFrom, generateCodexSecondOpinion, generateAdversarialStep, generateCodexPlanReview, generatePlanCompletionAuditShip, generatePlanCompletionAuditReview, generatePlanVerificationExec, generateScopeDrift, generateCrossReviewDedup } from './review';
 import { generateSlugEval, generateSlugSetup, generateBaseBranchDetect, generateDeployBootstrap, generateQAMethodology, generateCoAuthorTrailer, generateChangelogWorkflow } from './utility';
@@ -22,17 +20,9 @@ import { generateDxFramework } from './dx';
 export const RESOLVERS: Record<string, ResolverFn> = {
   SLUG_EVAL: generateSlugEval,
   SLUG_SETUP: generateSlugSetup,
-  COMMAND_REFERENCE: generateCommandReference,
-  SNAPSHOT_FLAGS: generateSnapshotFlags,
   PREAMBLE: generatePreamble,
-  BROWSE_SETUP: generateBrowseSetup,
   BASE_BRANCH_DETECT: generateBaseBranchDetect,
   QA_METHODOLOGY: generateQAMethodology,
-  DESIGN_METHODOLOGY: generateDesignMethodology,
-  DESIGN_HARD_RULES: generateDesignHardRules,
-  UX_PRINCIPLES: generateUXPrinciples,
-  DESIGN_OUTSIDE_VOICES: generateDesignOutsideVoices,
-  DESIGN_REVIEW_LITE: generateDesignReviewLite,
   REVIEW_DASHBOARD: generateReviewDashboard,
   PLAN_FILE_REVIEW_REPORT: generatePlanFileReviewReport,
   TEST_BOOTSTRAP: generateTestBootstrap,
@@ -41,10 +31,6 @@ export const RESOLVERS: Record<string, ResolverFn> = {
   TEST_COVERAGE_AUDIT_REVIEW: generateTestCoverageAuditReview,
   TEST_FAILURE_TRIAGE: generateTestFailureTriage,
   SPEC_REVIEW_LOOP: generateSpecReviewLoop,
-  DESIGN_SKETCH: generateDesignSketch,
-  DESIGN_SETUP: generateDesignSetup,
-  DESIGN_MOCKUP: generateDesignMockup,
-  DESIGN_SHOTGUN_LOOP: generateDesignShotgunLoop,
   BENEFITS_FROM: generateBenefitsFrom,
   CODEX_SECOND_OPINION: generateCodexSecondOpinion,
   ADVERSARIAL_STEP: generateAdversarialStep,
