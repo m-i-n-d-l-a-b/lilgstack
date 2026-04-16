@@ -231,7 +231,10 @@ fi
 SETTINGS_HOOK="$(dirname "$0")/gstack-settings-hook"
 SESSION_UPDATE="$(dirname "$0")/gstack-session-update"
 if [ -x "$SETTINGS_HOOK" ]; then
-  "$SETTINGS_HOOK" remove "$SESSION_UPDATE" 2>/dev/null && REMOVED+=("SessionStart hook") || true
+  _SETTINGS_FILE="${GSTACK_SETTINGS_FILE:-$HOME/.claude/settings.json}"
+  if [ -f "$_SETTINGS_FILE" ]; then
+    "$SETTINGS_HOOK" remove "$SESSION_UPDATE" 2>/dev/null && REMOVED+=("SessionStart hook") || true
+  fi
 fi
 
 # ─── Remove global state ────────────────────────────────────

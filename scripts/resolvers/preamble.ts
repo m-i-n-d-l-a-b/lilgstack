@@ -221,8 +221,6 @@ Key routing rules:
 - Code review, check my diff → invoke review
 - Update docs after shipping → invoke document-release
 - Weekly retro → invoke retro
-- Design system, brand → invoke design-consultation
-- Visual audit, design polish → invoke design-review
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
@@ -586,10 +584,9 @@ Then write a \`## GSTACK REVIEW REPORT\` section to the end of the plan file:
 | CEO Review | \\\`/plan-ceo-review\\\` | Scope & strategy | 0 | — | — |
 | Codex Review | \\\`/codex review\\\` | Independent 2nd opinion | 0 | — | — |
 | Eng Review | \\\`/plan-eng-review\\\` | Architecture & tests (required) | 0 | — | — |
-| Design Review | \\\`/plan-design-review\\\` | UI/UX gaps | 0 | — | — |
 | DX Review | \\\`/plan-devex-review\\\` | Developer experience gaps | 0 | — | — |
 
-**VERDICT:** NO REVIEWS YET — run \\\`/autoplan\\\` for full review pipeline, or individual reviews above.
+**VERDICT:** NO REVIEWS YET — run individual reviews above.
 \\\`\\\`\\\`
 
 **PLAN MODE EXCEPTION — ALWAYS RUN:** This writes to the plan file, which is the one
@@ -714,8 +711,8 @@ available]. [Health score if available]." Keep it to 2-3 sentences.`;
 // Skills by tier:
 //   T1: browse, setup-cookies, benchmark
 //   T2: investigate, cso, retro, doc-release, setup-deploy, canary, checkpoint, health
-//   T3: autoplan, codex, design-consult, office-hours, ceo/design/eng-review
-//   T4: ship, review, qa, qa-only, design-review, land-deploy
+//   T3: codex, office-hours, ceo/eng-review, devex-review
+//   T4: ship, review, qa, qa-only, land-deploy
 export function generatePreamble(ctx: TemplateContext): string {
   const tier = ctx.preambleTier ?? 4;
   if (tier < 1 || tier > 4) {

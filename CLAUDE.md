@@ -70,8 +70,8 @@ gstack/
 
 **The 7 sprint stack agents** (`interrogator`, `architect`, `maker`, `auditor`, `breaker`, `releaser`, `archivist`) are **hand-authored** SKILL.md files. Edit them directly — no build step.
 
-**`browse/SKILL.md` and `design/SKILL.md`** are still generated from `.tmpl` templates:
-1. Edit the `.tmpl` file (e.g. `browse/SKILL.md.tmpl`)
+**`browse/SKILL.md`** is generated from a `.tmpl` template:
+1. Edit `browse/SKILL.md.tmpl`
 2. Run `bun run gen:skill-docs`
 3. Commit both the `.tmpl` and generated `.md` files
 
