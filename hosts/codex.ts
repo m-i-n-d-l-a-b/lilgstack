@@ -32,7 +32,6 @@ const codex: HostConfig = {
   ],
 
   suppressedResolvers: [
-    'DESIGN_OUTSIDE_VOICES',  // design.ts:485 — Codex can't invoke itself
     'ADVERSARIAL_STEP',       // review.ts:408 — Codex can't invoke itself
     'CODEX_SECOND_OPINION',   // review.ts:257 — Codex can't invoke itself
     'CODEX_PLAN_REVIEW',      // review.ts:541 — Codex can't invoke itself
@@ -40,14 +39,14 @@ const codex: HostConfig = {
   ],
 
   runtimeRoot: {
-    globalSymlinks: ['bin', 'browse/dist', 'browse/bin', 'gstack-upgrade', 'ETHOS.md'],
+    globalSymlinks: ['bin', 'gstack-upgrade', 'ETHOS.md'],
     globalFiles: {
       'review': ['checklist.md', 'TODOS-format.md'],
     },
   },
   sidecar: {
     path: '.agents/skills/gstack',
-    symlinks: ['bin', 'browse', 'review', 'qa', 'ETHOS.md'],
+    symlinks: ['bin', 'review', 'qa', 'ETHOS.md'],
   },
 
   install: {
