@@ -18,8 +18,6 @@ sensitive: true
 
 {{PREAMBLE}}
 
-{{BROWSE_SETUP}}
-
 {{BASE_BRANCH_DETECT}}
 
 **If the platform detected above is GitLab or unknown:** STOP with: "GitLab support for /land-and-deploy is not yet implemented. Run `/ship` to create the MR, then merge manually via the GitLab web UI." Do not proceed.
@@ -749,42 +747,33 @@ Use the diff-scope classification from Step 5 to determine canary depth:
 | Diff Scope | Canary Depth |
 |------------|-------------|
 | SCOPE_DOCS only | Already skipped in Step 5 |
-| SCOPE_CONFIG only | Smoke: `$B goto` + verify 200 status |
-| SCOPE_BACKEND only | Console errors + perf check |
-| SCOPE_FRONTEND (any) | Full: console + perf + screenshot |
+| SCOPE_CONFIG only | Smoke: HTTP status check |
+| SCOPE_BACKEND only | HTTP status + response body check |
+| SCOPE_FRONTEND (any) | Full: status + response + CI logs |
 | Mixed scopes | Full canary |
 
 **Full canary sequence:**
 
 ```bash
-$B goto <url>
+# Check HTTP status
+curl -s -o /dev/null -w "%{http_code}" <url>
 ```
 
-Check that the page loaded successfully (200, not an error page).
+Check that the page responds with 200 (not 4xx/5xx).
 
 ```bash
-$B console --errors
+# Check response content
+curl -s <url> | head -50
 ```
 
-Check for critical console errors: lines containing `Error`, `Uncaught`, `Failed to load`, `TypeError`, `ReferenceError`. Ignore warnings.
+Verify the page has real content (not blank HTML, not a generic error page).
 
 ```bash
-$B perf
+# Check for recent deploy errors in CI/CD logs
+gh run list --limit 3 --json status,conclusion,name,url 2>/dev/null || true
 ```
 
-Check that page load time is under 10 seconds.
-
-```bash
-$B text
-```
-
-Verify the page has content (not blank, not a generic error page).
-
-```bash
-$B snapshot -i -a -o ".gstack/deploy-reports/post-deploy.png"
-```
-
-Take an annotated screenshot as evidence.
+Check that the latest CI run passed.
 
 **Health assessment:**
 - Page loads successfully with 200 status → PASS

@@ -54,12 +54,6 @@ You are a QA engineer AND a bug-fix engineer. Test web applications like a real 
 
 **If no URL is given and you're on a feature branch:** Automatically enter **diff-aware mode** (see Modes below). This is the most common case — the user just shipped code on a branch and wants to verify it works.
 
-**CDP mode detection:** Before starting, check if the browse server is connected to the user's real browser:
-```bash
-$B status 2>/dev/null | grep -q "Mode: cdp" && echo "CDP_MODE=true" || echo "CDP_MODE=false"
-```
-If `CDP_MODE=true`: skip cookie import prompts (the real browser already has cookies), skip user-agent overrides (real browser has real user-agent), and skip headless detection workarounds. The user's real auth sessions are already available.
-
 **Check for clean working tree:**
 
 ```bash
@@ -77,10 +71,6 @@ If the output is non-empty (working tree is dirty), **STOP** and use AskUserQues
 RECOMMENDATION: Choose A because uncommitted work should be preserved as a commit before QA adds its own fix commits.
 
 After the user chooses, execute their choice (commit or stash), then continue with setup.
-
-**Find the browse binary:**
-
-{{BROWSE_SETUP}}
 
 **Check test framework (bootstrap if needed):**
 
@@ -182,16 +172,11 @@ git commit -m "fix(qa): ISSUE-NNN — short description"
 
 ### 8d. Re-test
 
-- Navigate back to the affected page
-- Take **before/after screenshot pair**
-- Check console for errors
-- Use `snapshot -D` to verify the change had the expected effect
+- Verify the fix with curl or by asking the user to check in their browser
+- Ask the user for a before/after screenshot if the fix is visual
 
 ```bash
-$B goto <affected-url>
-$B screenshot "$REPORT_DIR/screenshots/issue-NNN-after.png"
-$B console --errors
-$B snapshot -D
+curl -s -o /dev/null -w "HTTP %{http_code}" <affected-url>
 ```
 
 ### 8e. Classify

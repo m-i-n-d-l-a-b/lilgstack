@@ -35,12 +35,6 @@ approximations. Computed layout via Pretext. Text reflows on resize, heights adj
 to content, cards size themselves, chat bubbles shrinkwrap, editorial spreads flow
 around obstacles.
 
-{{DESIGN_SETUP}}
-
-{{UX_PRINCIPLES}}
-
-{{BROWSE_SETUP}}
-
 ---
 
 ## Step 0: Input Detection
@@ -145,14 +139,12 @@ After routing, output a brief context summary:
 
 ## Step 1: Design Analysis
 
-1. If `$D` is available (`DESIGN_READY`), extract a structured implementation spec:
-```bash
-$D prompt --image <approved-variant.png> --output json
-```
-This returns colors, typography, layout structure, and component inventory via GPT-4o vision.
-
-2. If `$D` is not available, read the approved PNG inline using the Read tool.
+1. If an approved PNG exists, read it inline using the Read tool.
    Describe the visual layout, colors, typography, and component structure yourself.
+   Extract the color values, fonts, and spacing from the approved mockup by examining
+   it visually and documenting the design tokens manually.
+
+2. If no approved PNG is available, skip to the plan-driven or freeform path below.
 
 3. If in plan-driven or freeform mode (no approved PNG), design from context:
    - **Plan-driven:** read the CEO plan and/or design review notes. Extract the described
@@ -465,26 +457,19 @@ kill $_SERVER_PID 2>/dev/null || true
 
 ## Step 4: Preview + Refinement Loop
 
-### Verification Screenshots
+### Verification
 
-If `$B` is available (browse binary), take verification screenshots at 3 viewports:
+Open the HTML file in the user's default browser to verify:
 
 ```bash
-$B goto "file://<path-to-finalized.html>"
-$B screenshot /tmp/gstack-verify-mobile.png --width 375
-$B screenshot /tmp/gstack-verify-tablet.png --width 768
-$B screenshot /tmp/gstack-verify-desktop.png --width 1440
+# Open the HTML file in your default browser to verify
+open <path-to-finalized.html> 2>/dev/null || xdg-open <path-to-finalized.html> 2>/dev/null || echo "Open <path-to-finalized.html> in your browser to verify"
 ```
 
-Show all three screenshots inline using the Read tool. Check for:
+Ask the user to check visually for:
 - Text overflow (text cut off or extending beyond containers)
 - Layout collapse (elements overlapping or missing)
 - Responsive breakage (content not adapting to viewport)
-
-If issues are found, note them and fix before presenting to the user.
-
-If `$B` is not available, skip verification and note:
-"Browse binary not available. Skipping automated viewport verification."
 
 ### Refinement Loop
 

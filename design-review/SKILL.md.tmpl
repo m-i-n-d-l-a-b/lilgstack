@@ -42,15 +42,15 @@ You are a senior product designer AND a frontend engineer. Review live sites wit
 
 **If no URL is given and you're on main/master:** Ask the user for a URL.
 
-**CDP mode detection:** Check if browse is connected to the user's real browser:
-```bash
-$B status 2>/dev/null | grep -q "Mode: cdp" && echo "CDP_MODE=true" || echo "CDP_MODE=false"
-```
-If `CDP_MODE=true`: skip cookie import steps — the real browser already has cookies and auth sessions. Skip headless detection workarounds.
+**Get visual evidence:**
 
-**Check for DESIGN.md:**
+Design review works from screenshots. Use whichever method applies:
 
-Look for `DESIGN.md`, `design-system.md`, or similar in the repo root. If found, read it — all design decisions must be calibrated against it. Deviations from the project's stated design system are higher severity. If not found, use universal design principles and offer to create one from the inferred system.
+1. **If the user provided a URL:** Use AskUserQuestion to ask them to open the URL in their browser and share a screenshot using the attachment feature or paste an image.
+2. **If screenshots were already provided:** Read them with the Read tool.
+3. **If on a feature branch with local dev server:** Ask the user to navigate to the app and share a screenshot.
+
+For each page in scope, collect at least one screenshot before starting the audit.
 
 **Check for clean working tree:**
 
@@ -59,39 +59,16 @@ git status --porcelain
 ```
 
 If the output is non-empty (working tree is dirty), **STOP** and use AskUserQuestion:
-
 "Your working tree has uncommitted changes. /design-review needs a clean tree so each design fix gets its own atomic commit."
-
-- A) Commit my changes — commit all current changes with a descriptive message, then start design review
-- B) Stash my changes — stash, run design review, pop the stash after
+- A) Commit my changes first
+- B) Stash my changes
 - C) Abort — I'll clean up manually
-
-RECOMMENDATION: Choose A because uncommitted work should be preserved as a commit before design review adds its own fix commits.
-
-After the user chooses, execute their choice (commit or stash), then continue with setup.
-
-**Find the browse binary:**
-
-{{BROWSE_SETUP}}
-
-**Check test framework (bootstrap if needed):**
-
-{{TEST_BOOTSTRAP}}
-
-**Find the gstack designer (optional — enables target mockup generation):**
-
-{{DESIGN_SETUP}}
-
-If `DESIGN_READY`: during the fix loop, you can generate "target mockups" showing what a finding should look like after fixing. This makes the gap between current and intended design visceral, not abstract.
-
-If `DESIGN_NOT_AVAILABLE`: skip mockup generation — the fix loop works without it.
 
 **Create output directories:**
 
 ```bash
-eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)"
-REPORT_DIR=~/.gstack/projects/$SLUG/designs/design-audit-$(date +%Y%m%d)
-mkdir -p "$REPORT_DIR/screenshots"
+mkdir -p .gstack/design-reports
+REPORT_DIR=".gstack/design-reports"
 echo "REPORT_DIR: $REPORT_DIR"
 ```
 
@@ -99,39 +76,37 @@ echo "REPORT_DIR: $REPORT_DIR"
 
 {{LEARNINGS_SEARCH}}
 
-{{UX_PRINCIPLES}}
-
 ## Phases 1-6: Design Audit Baseline
 
-{{DESIGN_METHODOLOGY}}
+Work through the following phases using screenshots provided by the user:
 
-{{DESIGN_HARD_RULES}}
+**Phase 1: First Impression** — Review the screenshot(s) provided. What does the design communicate in the first 3 seconds? Note overall visual quality, hierarchy, and whether it feels intentional or generic.
 
-Record baseline design score and AI slop score at end of Phase 6.
+**Phase 2: Typography** — Check font choices, sizes, line heights, and text contrast. Are headings clearly distinct from body text? Is there visual rhythm?
+
+**Phase 3: Spacing & Layout** — Check for consistent spacing, alignment, and grid structure. Are there orphaned elements, misaligned components, or inconsistent margins?
+
+**Phase 4: Color & Visual Identity** — Check color palette consistency, contrast ratios, and whether the palette feels intentional. Check for WCAG AA compliance on text.
+
+**Phase 5: Component Consistency** — Are buttons, form fields, cards, and nav elements consistent across pages? Check for duplicate patterns implemented differently.
+
+**Phase 6: Interactions & States** — Ask the user about hover, focus, loading, empty, and error states. Review any interaction screenshots provided.
+
+Record baseline design score at end of Phase 6 (0-100, with deductions per finding).
 
 ---
 
 ## Output Structure
 
 ```
-~/.gstack/projects/$SLUG/designs/design-audit-{YYYYMMDD}/
+.gstack/design-reports/
 ├── design-audit-{domain}.md                  # Structured report
-├── screenshots/
-│   ├── first-impression.png                  # Phase 1
-│   ├── {page}-annotated.png                  # Per-page annotated
-│   ├── {page}-mobile.png                     # Responsive
-│   ├── {page}-tablet.png
-│   ├── {page}-desktop.png
-│   ├── finding-001-before.png                # Before fix
-│   ├── finding-001-target.png                # Target mockup (if generated)
-│   ├── finding-001-after.png                 # After fix
-│   └── ...
+├── finding-001-before.png                    # Screenshot before fix (user-provided)
+├── finding-001-after.png                     # Screenshot after fix (user-provided)
 └── design-baseline.json                      # For regression mode
 ```
 
 ---
-
-{{DESIGN_OUTSIDE_VOICES}}
 
 ## Phase 7: Triage
 
@@ -160,23 +135,10 @@ For each fixable finding, in impact order:
 - ONLY modify files directly related to the finding
 - Prefer CSS/styling changes over structural component changes
 
-### 8a.5. Target Mockup (if DESIGN_READY)
-
-If the gstack designer is available and the finding involves visual layout, hierarchy, or spacing (not just a CSS value fix like wrong color or font-size), generate a target mockup showing what the corrected version should look like:
-
-```bash
-$D generate --brief "<description of the page/component with the finding fixed, referencing DESIGN.md constraints>" --output "$REPORT_DIR/screenshots/finding-NNN-target.png"
-```
-
-Show the user: "Here's the current state (screenshot) and here's what it should look like (mockup). Now I'll fix the source to match."
-
-This step is optional — skip for trivial CSS fixes (wrong hex color, missing padding value). Use it for findings where the intended design isn't obvious from the description alone.
-
 ### 8b. Fix
 
 - Read the source code, understand the context
 - Make the **minimal fix** — smallest change that resolves the design issue
-- If a target mockup was generated in 8a.5, use it as the visual reference for the fix
 - CSS-only changes are preferred (safer, more reversible)
 - Do NOT refactor surrounding code, add features, or "improve" unrelated things
 
@@ -192,16 +154,7 @@ git commit -m "style(design): FINDING-NNN — short description"
 
 ### 8d. Re-test
 
-Navigate back to the affected page and verify the fix:
-
-```bash
-$B goto <affected-url>
-$B screenshot "$REPORT_DIR/screenshots/finding-NNN-after.png"
-$B console --errors
-$B snapshot -D
-```
-
-Take **before/after screenshot pair** for every fix.
+After applying the fix, ask the user to refresh the page in their browser and share a screenshot showing the result. Compare the before screenshot (collected in the audit phase) with the after screenshot to confirm the fix is visible.
 
 ### 8e. Classify
 
@@ -245,10 +198,10 @@ DESIGN-FIX RISK:
 
 After all fixes are applied:
 
-1. Re-run the design audit on all affected pages
-2. If target mockups were generated during the fix loop AND `DESIGN_READY`: run `$D verify --mockup "$REPORT_DIR/screenshots/finding-NNN-target.png" --screenshot "$REPORT_DIR/screenshots/finding-NNN-after.png"` to compare the fix result against the target. Include pass/fail in the report.
-3. Compute final design score and AI slop score
-4. **If final scores are WORSE than baseline:** WARN prominently — something regressed
+1. Ask the user to refresh affected pages in their browser and share updated screenshots
+2. If before/after screenshots were collected, compare them to confirm fixes are visible.
+3. Compute final design score
+4. **If final design score is WORSE than baseline:** WARN prominently — something regressed
 
 ---
 

@@ -3,11 +3,11 @@ name: canary
 preamble-tier: 2
 version: 1.0.0
 description: |
-  Post-deploy canary monitoring. Watches the live app for console errors,
-  performance regressions, and page failures using the browse daemon. Takes
-  periodic screenshots, compares against pre-deploy baselines, and alerts
-  on anomalies. Use when: "monitor deploy", "canary", "post-deploy check",
-  "watch production", "verify deploy". (gstack)
+  Post-deploy canary monitoring. Watches the live app for HTTP status,
+  response content, and performance regressions using curl and CI logs.
+  Alerts on failures and compares against pre-deploy baselines. Use when:
+  "monitor deploy", "canary", "post-deploy check", "watch production",
+  "verify deploy". (gstack)
 allowed-tools:
   - Bash
   - Read
@@ -18,15 +18,13 @@ allowed-tools:
 
 {{PREAMBLE}}
 
-{{BROWSE_SETUP}}
-
 {{BASE_BRANCH_DETECT}}
 
 # /canary — Post-Deploy Visual Monitor
 
 You are a **Release Reliability Engineer** watching production after a deploy. You've seen deploys that pass CI but break in production — a missing environment variable, a CDN cache serving stale assets, a database migration that's slower than expected on real data. Your job is to catch these in the first 10 minutes, not 10 hours.
 
-You use the browse daemon to watch the live app, take screenshots, check console errors, and compare against baselines. You are the safety net between "shipped" and "verified."
+You use curl-based health checks and CI logs to watch the live app, verify HTTP status, check response content, and compare against baselines. You are the safety net between "shipped" and "verified."
 
 ## User-invocable
 When the user types `/canary`, run this skill.
@@ -58,14 +56,18 @@ If the user passed `--baseline`, capture the current state BEFORE deploying.
 For each page (either from `--pages` or the homepage):
 
 ```bash
-$B goto <page-url>
-$B snapshot -i -a -o ".gstack/canary-reports/baselines/<page-name>.png"
-$B console --errors
-$B perf
-$B text
+# HTTP status check
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" <page-url>)
+echo "HTTP status: $STATUS"
+# Response time
+LOAD_TIME=$(curl -s -o /dev/null -w "%{time_total}" <page-url>)
+echo "Load time: ${LOAD_TIME}s"
+# Content check
+CONTENT=$(curl -s <page-url> | head -20)
+echo "Content present: $([ -n "$CONTENT" ] && echo yes || echo no)"
 ```
 
-Collect for each page: screenshot path, console error count, page load time from `perf`, and a text content snapshot.
+Collect for each page: HTTP status code, response time (from curl), and whether content is present (yes/no from curl body).
 
 Save the baseline manifest to `.gstack/canary-reports/baseline.json`:
 
@@ -76,9 +78,9 @@ Save the baseline manifest to `.gstack/canary-reports/baseline.json`:
   "branch": "<current branch>",
   "pages": {
     "/": {
-      "screenshot": "baselines/home.png",
-      "console_errors": 0,
-      "load_time_ms": 450
+      "http_status": 200,
+      "load_time_s": 0.45,
+      "content_present": true
     }
   }
 }
@@ -88,15 +90,15 @@ Then STOP and tell the user: "Baseline captured. Deploy your changes, then run `
 
 ### Phase 3: Page Discovery
 
-If no `--pages` were specified, auto-discover pages to monitor:
+If no `--pages` were specified, attempt to discover pages from the sitemap:
 
 ```bash
-$B goto <url>
-$B links
-$B snapshot -i
+curl -s <url>/sitemap.xml 2>/dev/null | grep -o '<loc>[^<]*</loc>' | sed 's/<[^>]*>//g' | head -10 || echo "NO_SITEMAP"
 ```
 
-Extract the top 5 internal navigation links from the `links` output. Always include the homepage. Present the page list via AskUserQuestion:
+If a sitemap is available, extract the top 5 URLs from it. If no sitemap, default to the homepage only and ask the user for additional pages.
+
+Always include the homepage. Present the page list via AskUserQuestion:
 
 - **Context:** Monitoring the production site at the given URL after a deploy.
 - **Question:** Which pages should the canary monitor?
@@ -112,23 +114,27 @@ If no `baseline.json` exists, take a quick snapshot now as a reference point.
 For each page to monitor:
 
 ```bash
-$B goto <page-url>
-$B snapshot -i -a -o ".gstack/canary-reports/screenshots/pre-<page-name>.png"
-$B console --errors
-$B perf
+# HTTP status check
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" <page-url>)
+# Response time
+LOAD_TIME=$(curl -s -o /dev/null -w "%{time_total}" <page-url>)
+# Content check
+CONTENT=$(curl -s <page-url> | head -5)
 ```
 
-Record the console error count and load time for each page. These become the reference for detecting regressions during monitoring.
+Record the HTTP status and load time for each page. These become the reference for detecting regressions during monitoring.
 
 ### Phase 5: Continuous Monitoring Loop
 
 Monitor for the specified duration. Every 60 seconds, check each page:
 
 ```bash
-$B goto <page-url>
-$B snapshot -i -a -o ".gstack/canary-reports/screenshots/<page-name>-<check-number>.png"
-$B console --errors
-$B perf
+# Status check
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" <page-url>)
+# Response time
+LOAD_TIME=$(curl -s -o /dev/null -w "%{time_total}" <page-url>)
+# Content check
+CONTENT=$(curl -s <page-url> | head -5)
 ```
 
 After each check, compare results against the baseline (or pre-deploy snapshot):
@@ -151,7 +157,7 @@ Time:     [timestamp, e.g., check #3 at 180s]
 Page:     [page URL]
 Type:     [CRITICAL / HIGH / MEDIUM]
 Finding:  [what changed — be specific]
-Evidence: [screenshot path]
+Evidence: [curl output]
 Baseline: [baseline value]
 Current:  [current value]
 ```
@@ -214,8 +220,8 @@ If the user chooses A, copy the latest screenshots to the baselines directory an
 
 - **Speed matters.** Start monitoring within 30 seconds of invocation. Don't over-analyze before monitoring.
 - **Alert on changes, not absolutes.** Compare against baseline, not industry standards.
-- **Screenshots are evidence.** Every alert includes a screenshot path. No exceptions.
+- **Curl output is evidence.** Every alert includes HTTP status, load time, and content sample. No exceptions.
 - **Transient tolerance.** Only alert on patterns that persist across 2+ consecutive checks.
 - **Baseline is king.** Without a baseline, canary is a health check. Encourage `--baseline` before deploying.
-- **Performance thresholds are relative.** 2x baseline is a regression. 1.5x might be normal variance.
+- **Performance thresholds are relative.** 2x baseline load time is a regression. 1.5x might be normal variance.
 - **Read-only.** Observe and report. Don't modify code unless the user explicitly asks to investigate and fix.

@@ -3,11 +3,10 @@ name: benchmark
 preamble-tier: 1
 version: 1.0.0
 description: |
-  Performance regression detection using the browse daemon. Establishes
-  baselines for page load times, Core Web Vitals, and resource sizes.
-  Compares before/after on every PR. Tracks performance trends over time.
-  Use when: "performance", "benchmark", "page speed", "lighthouse", "web vitals",
-  "bundle size", "load time". (gstack)
+  Performance regression detection. Establishes baselines for page load times
+  and bundle sizes. Compares before/after on every PR. Tracks performance trends
+  over time. Use when: "performance", "benchmark", "page speed", "lighthouse",
+  "web vitals", "bundle size", "load time". (gstack)
 voice-triggers:
   - "speed test"
   - "check performance"
@@ -20,8 +19,6 @@ allowed-tools:
 ---
 
 {{PREAMBLE}}
-
-{{BROWSE_SETUP}}
 
 # /benchmark — Performance Regression Detection
 
@@ -61,41 +58,40 @@ git diff $(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || gh repo 
 
 ### Phase 3: Performance Data Collection
 
-For each page, collect comprehensive performance metrics:
+For each page, collect performance metrics using curl timing:
 
 ```bash
-$B goto <page-url>
-$B perf
+curl -w "@-" -o /dev/null -s "<page-url>" <<'EOF'
+     time_namelookup: %{time_namelookup}s\n
+        time_connect: %{time_connect}s\n
+     time_appconnect: %{time_appconnect}s\n
+    time_pretransfer: %{time_pretransfer}s\n
+       time_redirect: %{time_redirect}s\n
+  time_starttransfer: %{time_starttransfer}s\n
+                    ----------\n
+          time_total: %{time_total}s\n
+EOF
 ```
 
-Then gather detailed metrics via JavaScript:
+Extract key metrics from curl timing:
+- **TTFB** (Time to First Byte): `time_starttransfer`
+- **Full Load**: `time_total`
+- **HTTP Status**: verify 200
 
+Bundle size check (static analysis):
 ```bash
-$B eval "JSON.stringify(performance.getEntriesByType('navigation')[0])"
+# JS bundle sizes
+find . -path '*/dist/*.js' -o -path '*/.next/static/chunks/*.js' 2>/dev/null | xargs ls -lh 2>/dev/null | sort -k5 -rh | head -15
+# CSS bundle sizes
+find . -path '*/dist/*.css' -o -path '*/.next/static/css/*.css' 2>/dev/null | xargs ls -lh 2>/dev/null | sort -k5 -rh | head -10
+# Total dist size
+du -sh dist/ .next/ build/ 2>/dev/null | head -5
 ```
 
-Extract key metrics:
-- **TTFB** (Time to First Byte): `responseStart - requestStart`
-- **FCP** (First Contentful Paint): from PerformanceObserver or `paint` entries
-- **LCP** (Largest Contentful Paint): from PerformanceObserver
-- **DOM Interactive**: `domInteractive - navigationStart`
-- **DOM Complete**: `domComplete - navigationStart`
-- **Full Load**: `loadEventEnd - navigationStart`
-
-Resource analysis:
+Network summary (from build output):
 ```bash
-$B eval "JSON.stringify(performance.getEntriesByType('resource').map(r => ({name: r.name.split('/').pop().split('?')[0], type: r.initiatorType, size: r.transferSize, duration: Math.round(r.duration)})).sort((a,b) => b.duration - a.duration).slice(0,15))"
-```
-
-Bundle size check:
-```bash
-$B eval "JSON.stringify(performance.getEntriesByType('resource').filter(r => r.initiatorType === 'script').map(r => ({name: r.name.split('/').pop().split('?')[0], size: r.transferSize})))"
-$B eval "JSON.stringify(performance.getEntriesByType('resource').filter(r => r.initiatorType === 'css').map(r => ({name: r.name.split('/').pop().split('?')[0], size: r.transferSize})))"
-```
-
-Network summary:
-```bash
-$B eval "(() => { const r = performance.getEntriesByType('resource'); return JSON.stringify({total_requests: r.length, total_transfer: r.reduce((s,e) => s + (e.transferSize||0), 0), by_type: Object.entries(r.reduce((a,e) => { a[e.initiatorType] = (a[e.initiatorType]||0) + 1; return a; }, {})).sort((a,b) => b[1]-a[1])})})()"
+# If Next.js: read the build output summary
+cat .next/build-manifest.json 2>/dev/null | python3 -c "import json,sys; data=json.load(sys.stdin); pages=data.get('pages',{}); [print(f'{k}: {len(v)} chunks') for k,v in list(pages.items())[:10]]" 2>/dev/null || true
 ```
 
 ### Phase 4: Baseline Capture (--baseline mode)
