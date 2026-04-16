@@ -15,7 +15,7 @@
 ### Changed
 - **33 skills → 7 focused agents.** The old skill proliferation (autoplan, plan-ceo-review, plan-eng-review, plan-design-review, plan-devex-review, design-html, design-consultation, design-shotgun, design-review, review, investigate, qa, qa-only, ship, land-and-deploy, canary, learn, document-release, retro, and more) is replaced by the 7 sprint stack agents. The browse, design, gstack-upgrade, health, setup-deploy, and open-gstack-browser skills are unchanged.
 - **Paid eval infrastructure removed.** The E2E test suite (~13 test files, ~$4/run), LLM-judge evals, and eval management scripts are removed. Free tests (`bun test`, <5s) remain.
-- **Template pipeline simplified.** Only `browse/SKILL.md` and `design/SKILL.md` are generated from templates now. All 7 sprint stack skills are hand-authored and require no build step.
+- **Template pipeline simplified.** Only `browse/SKILL.md` is generated from a template now. All 7 sprint stack skills are hand-authored and require no build step.
 
 ## [0.17.0.0] - 2026-04-14
 

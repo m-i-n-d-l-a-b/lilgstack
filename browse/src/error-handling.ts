@@ -32,7 +32,10 @@ export function safeKill(pid: number, signal: NodeJS.Signals | number): void {
   try {
     process.kill(pid, signal);
   } catch (err: any) {
-    if (err?.code !== 'ESRCH') throw err;
+    // POSIX: ESRCH = no such process.
+    // Windows/Bun: process.kill on non-existent PID throws SystemError with no code.
+    const isNoProcess = err?.code === 'ESRCH' || (IS_WINDOWS && !err?.code);
+    if (!isNoProcess) throw err;
   }
 }
 

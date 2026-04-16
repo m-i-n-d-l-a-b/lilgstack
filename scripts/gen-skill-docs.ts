@@ -579,9 +579,9 @@ Injected by the orchestrator for complete feature builds. Append to existing CLA
 
 ## Full Pipeline
 1. Read CLAUDE.md and understand the project context.
-2. Run /autoplan to review your approach (CEO + eng + design review pipeline).
-3. Implement the approved plan. Follow the planning discipline above.
-4. Run /ship to create a PR with tests, changelog, and version bump.
+2. Run /interrogator to validate the problem, then /architect to lock the blueprint.
+3. Implement the approved plan using /maker. Follow the planning discipline above.
+4. Run /auditor for a security pass, then /releaser to create a PR with tests, changelog, and version bump.
 5. Report back: PR URL, what shipped, decisions made, anything uncertain.
 
 Do not ask for human input until the PR is ready for review.
@@ -597,7 +597,7 @@ Append to existing CLAUDE.md.
 ## Planning Pipeline
 1. Read CLAUDE.md and understand the project context.
 2. Run /office-hours to produce a design doc (problem statement, premises, alternatives).
-3. Run /autoplan to review the design (CEO + eng + design + DX reviews + codex adversarial).
+3. Run /interrogator to validate assumptions, then /architect to produce a concrete blueprint.
 4. Save the final reviewed plan to a file the orchestrator can reference later.
    Write it to: plans/<project-slug>-plan-<date>.md in the current repo.
    Include the design doc, all review decisions, and the implementation sequence.

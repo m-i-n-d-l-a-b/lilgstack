@@ -25,7 +25,22 @@
       "Bash(powershell -Command:*)",
       "Bash(printf \"protocol=https\\\\nhost=github.com\\\\n\")",
       "Bash(git credential:*)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|HACK\\\\|XXX\" --include=*.md .)",
+      "Bash(for agent:*)",
+      "Bash(do echo:*)",
+      "Bash(find . -maxdepth 2 -type d -name design* -o -type l -name design*)",
+      "Bash(grep -r '$D ' . --include=*.md)",
+      "Bash(grep -rn \"design-consultation\\\\|design-review\\\\|plan-design\\\\|design/SKILL\" . --include=*.ts --include=*.md --include=*.tmpl)",
+      "Bash(ls -la *.md)",
+      "Bash(ls -la */SKILL.md)",
+      "Bash(perl --version)",
+      "Bash(bash browse/scripts/build-node-server.sh)",
+      "Bash(bun build:*)",
+      "Bash(bun --version)",
+      "Bash(npx playwright:*)",
+      "Bash(bun -e \":*)",
+      "Bash(grep -rn \"spawnSync\\\\|execSync\" test/*.test.ts)"
     ]
   }
 }
