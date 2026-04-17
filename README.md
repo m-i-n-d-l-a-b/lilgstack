@@ -175,7 +175,7 @@ You:    /releaser
         PR: github.com/you/app/pull/87
 ```
 
-Seven commands, end to end. Every agent knew what the previous one did. That is not a copilot. That is a process.
+End to end. Every agent knew what the previous one did. That is not a copilot. That is a process.
 
 ## The sprint
 
