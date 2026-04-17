@@ -1,33 +1,12 @@
-# gstack
+# lilgstack
 
-> "I don't think I've typed like a line of code probably since December, basically, which is an extremely large change." — [Andrej Karpathy](https://fortune.com/2026/03/21/andrej-karpathy-openai-cofounder-ai-agents-coding-state-of-psychosis-openclaw/), No Priors podcast, March 2026
+A stripped-down fork of [gstack](https://github.com/garrytan/gstack) by [Garry Tan](https://x.com/garrytan). The full version has 33+ skills covering design systems, visual mockups, multi-agent browser coordination, and more. This fork keeps the core: the 7-agent sprint stack that takes you from problem validation to shipped code.
 
-When I heard Karpathy say this, I wanted to find out how. How does one person ship like a team of twenty? Peter Steinberger built [OpenClaw](https://github.com/openclaw/openclaw) — 247K GitHub stars — essentially solo with AI agents. The revolution is here. A single builder with the right tooling can move faster than a traditional team.
-
-I'm [Garry Tan](https://x.com/garrytan), President & CEO of [Y Combinator](https://www.ycombinator.com/). I've worked with thousands of startups — Coinbase, Instacart, Rippling — when they were one or two people in a garage. Before YC, I was one of the first eng/PM/designers at Palantir, cofounded Posterous (sold to Twitter), and built Bookface, YC's internal social network.
-
-**gstack is my answer.** I've been building products for twenty years, and right now I'm shipping more code than I ever have. In the last 60 days: **600,000+ lines of production code** (35% tests), **10,000-20,000 lines per day**, part-time, while running YC full-time. Here's my last sprint across 3 projects: **140,751 lines added, 362 commits, ~115k net LOC** in one week.
-
-**2026 — 1,237 contributions and counting:**
-
-![GitHub contributions 2026 — 1,237 contributions, massive acceleration in Jan-Mar](docs/images/github-2026.png)
-
-**2013 — when I built Bookface at YC (772 contributions):**
-
-![GitHub contributions 2013 — 772 contributions building Bookface at YC](docs/images/github-2013.png)
-
-Same person. Different era. The difference is the tooling.
-
-**gstack is how I do it.** Seven focused sprint agents that take you from problem validation to shipped, documented code. Think → Plan → Build → Audit → Break → Release → Archive. Every agent reads the previous one's output. Nothing falls through the cracks. All slash commands, all Markdown, all free, MIT license.
-
-This is my open source software factory. I use it every day. I'm sharing it because these tools should be available to everyone.
-
-Fork it. Improve it. Make it yours. And if you want to hate on free open source software — you're welcome to, but I'd rather you just try it first.
+Seven focused agents. All slash commands, all Markdown, all free, MIT license.
 
 **Who this is for:**
-- **Founders and CEOs** — especially technical ones who still want to ship
-- **First-time Claude Code users** — structured roles instead of a blank prompt
-- **Tech leads and staff engineers** — rigorous review, QA, and release automation on every PR
+- Builders who want the sprint workflow without the full gstack surface area
+- Claude Code users who prefer a minimal, focused toolset
 
 ## Quick start
 
@@ -175,7 +154,7 @@ You:    /releaser
         PR: github.com/you/app/pull/87
 ```
 
-Seven commands, end to end. Every agent knew what the previous one did. That is not a copilot. That is a process.
+End to end. Every agent knew what the previous one did. That is not a copilot. That is a process.
 
 ## The sprint
 
@@ -293,12 +272,6 @@ The uninstall script does not edit CLAUDE.md. In each project where gstack was a
 ---
 
 Free, MIT licensed, open source. No premium tier, no waitlist.
-
-I open sourced how I build software. You can fork it and make it your own.
-
-> **We're hiring.** Want to ship 10K+ LOC/day and help harden gstack?
-> Come work at YC — [ycombinator.com/software](https://ycombinator.com/software)
-> Extremely competitive salary and equity. San Francisco, Dogpatch District.
 
 ## Docs
 
